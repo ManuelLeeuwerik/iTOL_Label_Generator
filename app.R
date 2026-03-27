@@ -46,7 +46,7 @@ ui <- fluidPage(
       textInput("dataset_label", "Dataset label", value = "My Dataset"),
       
       radioButtons("output_type", "Output type",
-                   choices = c("SYMBOL", "METADATA"), 
+                   choices = c("SYMBOL", "METADATA", "CHANGE_LABEL"), 
                    selected = "SYMBOL"),
 
       # SYMBOL-specific controls
@@ -63,14 +63,18 @@ ui <- fluidPage(
         tabPanel("Data Preview", 
                  DTOutput("table")),
         tabPanel("Symbol Settings",
-                 conditionalPanel(
-                   condition = "input.output_type == 'SYMBOL'",
-                   uiOutput("column_settings_ui")
-                 ),
-                 conditionalPanel(
-                   condition = "input.output_type == 'METADATA'",
-                   p("METADATA output will use raw values from selected columns")
-                 )
+         conditionalPanel(
+           condition = "input.output_type == 'SYMBOL'",
+           uiOutput("column_settings_ui")
+         ),
+         conditionalPanel(
+           condition = "input.output_type == 'METADATA'",
+           p("METADATA output will use raw values from selected columns")
+         ),
+         conditionalPanel(
+           condition = "input.output_type == 'CHANGE_LABEL'",
+           p("CHANGE_LABEL will replace current labels with new labels from selected columns")
+         )
         ),
         tabPanel("Output Preview",
                  uiOutput("preview_ui"))
@@ -106,9 +110,18 @@ server <- function(input, output, session){
     cols <- names(data())
 
     tagList(
-      selectInput("id_col","ID column", choices=cols),
-      selectizeInput("data_cols","Columns to visualize",
-                     choices=cols, multiple=TRUE)
+      # Show different inputs based on output type
+      conditionalPanel(
+        condition = "input.output_type != 'CHANGE_LABEL'",
+        selectInput("id_col","ID column", choices=cols),
+        selectizeInput("data_cols","Columns to visualize",
+                       choices=cols, multiple=TRUE)
+      ),
+      conditionalPanel(
+        condition = "input.output_type == 'CHANGE_LABEL'",
+        selectInput("old_label_col","Current label column", choices=cols),
+        selectInput("new_label_col","New label column", choices=cols)
+      )
     )
   })
 
@@ -161,7 +174,7 @@ server <- function(input, output, session){
             }
             
             current_sym <- isolate(input[[symbol_input_id]])
-            if(is.null(current_sym)) current_sym <- 2
+            if(is.null(current_sym)) current_sym <- 1
             
             # Color picker
             color_input <- conditionalPanel(
@@ -241,11 +254,11 @@ server <- function(input, output, session){
     # Symbols
     symbols <- sapply(col_values, function(val) {
       if(symbol_mode == "Auto") {
-        2
+        1
       } else {
         id <- paste0(col, "_", safe_id(val))
         sym <- input[[paste0("symbol_", id)]]
-        if(is.null(sym)) 2 else as.numeric(sym)
+        if(is.null(sym)) 1 else as.numeric(sym)
       }
     })
     
@@ -259,12 +272,31 @@ server <- function(input, output, session){
 
   # ---- Generate output content per column ----
   output_content_list <- reactive({
-    req(input$data_cols, input$id_col)
-    
     df <- data()
+  
+    if(input$output_type == "CHANGE_LABEL") {
+      req(input$old_label_col, input$new_label_col)
     
-    if(input$output_type == "METADATA") {
+      lines <- c(
+        "LABELS",
+        "#use this template to change the leaf labels, or define/change the internal node names",
+        "",
+        "SEPARATOR TAB",
+        "",
+        "DATA"
+      )
+    
+      for(i in seq_len(nrow(df))) {
+        old_label <- as.character(df[[input$old_label_col]][i])
+        new_label <- as.character(df[[input$new_label_col]][i])
+        lines <- c(lines, paste(old_label, new_label, sep = "\t"))
+      }
+    
+      list(LABELS = lines)
+    
+    } else if(input$output_type == "METADATA") {
       # Single METADATA file
+      req(input$data_cols, input$id_col)
       field_labels <- paste(input$data_cols, collapse = ",")
       
       lines <- c(
@@ -398,6 +430,8 @@ server <- function(input, output, session){
               paste0("download_", safe_id(name)),
               label = if(input$output_type == "METADATA") {
                 "Download metadata.txt"
+              } else if(input$output_type == "CHANGE_LABEL") {
+                "Download labels.txt"
               } else {
                 paste0("Download ", name, ".txt")
               },
@@ -415,35 +449,39 @@ server <- function(input, output, session){
     content_list <- output_content_list()
     
     # Create handler for each file
-    lapply(names(content_list), function(name) {
-      output[[paste0("download_", safe_id(name))]] <- downloadHandler(
-        filename = function() {
-          if(input$output_type == "METADATA") {
-            "metadata.txt"
-          } else {
-            paste0("symbol_", name, ".txt")
-          }
-        },
-        content = function(file) {
-          writeLines(content_list[[name]], file)
-        }
-      )
-    })
-    
-    # Single file handler
-    output$download_single <- downloadHandler(
+      lapply(names(content_list), function(name) {
+    output[[paste0("download_", safe_id(name))]] <- downloadHandler(
       filename = function() {
-        name <- names(content_list)[1]
         if(input$output_type == "METADATA") {
           "metadata.txt"
+        } else if(input$output_type == "CHANGE_LABEL") {
+          "labels.txt"
         } else {
           paste0("symbol_", name, ".txt")
         }
       },
       content = function(file) {
-        writeLines(content_list[[names(content_list)[1]]], file)
+        writeLines(content_list[[name]], file)
       }
     )
+  })
+  
+  # Single file handler
+  output$download_single <- downloadHandler(
+    filename = function() {
+      name <- names(content_list)[1]
+      if(input$output_type == "METADATA") {
+        "metadata.txt"
+      } else if(input$output_type == "CHANGE_LABEL") {
+        "labels.txt"
+      } else {
+        paste0("symbol_", name, ".txt")
+      }
+    },
+    content = function(file) {
+      writeLines(content_list[[names(content_list)[1]]], file)
+    }
+  )
   })
 }
 

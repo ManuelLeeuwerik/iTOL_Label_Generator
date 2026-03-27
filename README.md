@@ -123,4 +123,6 @@ mleeuwerik@DSK-MEYE-003:~$ ssh -L 8000:localhost:8000 m.leeuwerik@srv-lnx-meye1
 
 To run Rshiny app Rscript run_app.R 
 
-Legend should also reflect the column choosen.
+Make a readme in the app and how to use the app. Fix previews.
+Change all option, so column X i want instead of standard square symbol them all circle 
+Download all button!
