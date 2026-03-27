@@ -19,18 +19,23 @@ symbol_names <- c(
   "star"=3,
   "triangle_right"=4,
   "triangle_left"=5,
-  "checkmark"=6,
-  "solid_line"=7,
-  "dashed_line"=8,
-  "dotted_line"=9,
-  "arrow_left"=10,
-  "arrow_right"=11,
-  "bidirectional_arrow"=12
+  "checkmark"=6
 )
+
+# Standardize NA-like values to "Unknown"
+standardize_value <- function(x) {
+  if (is.na(x) || is.null(x)) return("Unknown")
+  x_char <- as.character(x)
+  # Check for NA, empty string, or whitespace-only string
+  if (x_char == "NA" || x_char == "" || grepl("^\\s+$", x_char)) {
+    return("Unknown")
+  }
+  return(x_char)
+}
 
 # ---------- UI ----------
 ui <- fluidPage(
-  titlePanel("iTOL SYMBOL Generator"),
+  titlePanel("iTOL SYMBOL & METADATA Generator"),
 
   sidebarLayout(
     sidebarPanel(
@@ -38,22 +43,45 @@ ui <- fluidPage(
                 accept = c(".tsv",".csv",".txt",".xlsx")),
 
       uiOutput("column_ui"),
+      
+      textInput("dataset_label", "Dataset label", value = "My Dataset"),
+      
+      radioButtons("output_type", "Output type",
+                   choices = c("SYMBOL", "METADATA"), 
+                   selected = "SYMBOL"),
 
-      radioButtons("color_mode","Color mode",
-                   choices=c("Auto","Manual"), selected="Auto"),
+      # SYMBOL-specific controls
+      conditionalPanel(
+        condition = "input.output_type == 'SYMBOL'",
+        radioButtons("color_mode","Color mode",
+                     choices=c("Auto","Manual"), selected="Auto"),
 
-      radioButtons("symbol_mode","Symbol mode",
-                   choices=c("Auto","Manual"), selected="Auto"),
+        radioButtons("symbol_mode","Symbol mode",
+                     choices=c("Auto","Manual"), selected="Auto"),
 
-      numericInput("max_size","Max size",10, min=1),
+        numericInput("max_size","Max size",10, min=1)
+      ),
 
       downloadButton("download","Download iTOL")
     ),
 
     mainPanel(
-      DTOutput("table"),
-      hr(),
-      uiOutput("value_ui")
+      tabsetPanel(
+        tabPanel("Data Preview", 
+                 DTOutput("table")),
+        tabPanel("Symbol Settings",
+                 conditionalPanel(
+                   condition = "input.output_type == 'SYMBOL'",
+                   uiOutput("value_ui")
+                 ),
+                 conditionalPanel(
+                   condition = "input.output_type == 'METADATA'",
+                   p("METADATA output will use raw values from selected columns")
+                 )
+        ),
+        tabPanel("Output Preview",
+                 verbatimTextOutput("preview"))
+      )
     )
   )
 )
@@ -96,27 +124,37 @@ server <- function(input, output, session){
     req(input$data_cols)
     df <- data()
 
-    values <- unique(as.character(unlist(df[input$data_cols])))
+    # Standardize all values
+    values <- unique(sapply(as.character(unlist(df[input$data_cols])), standardize_value))
 
     tagList(lapply(values, function(val){
 
       id <- safe_id(val)
 
-      # Preserve color
+      # Preserve color, but force grey for Unknown
       current_col <- isolate(input[[paste0("color_", id)]])
-      if(is.null(current_col)) current_col <- "#808080"
+      if(val == "Unknown") {
+        current_col <- "#808080"
+      } else if(is.null(current_col)) {
+        current_col <- "#808080"
+      }
 
       # Preserve symbol
       current_sym <- isolate(input[[paste0("symbol_", id)]])
       if(is.null(current_sym)) current_sym <- 2
 
+      # Disable color picker for Unknown
       color_input <- if(input$color_mode=="Manual"){
-        colourInput(
-          inputId = paste0("color_", id),
-          label = NULL,
-          value = current_col,
-          showColour = "both"
-        )
+        if(val == "Unknown") {
+          tags$span(style="color:#666;font-size:0.9em;", "(Fixed: Grey)")
+        } else {
+          colourInput(
+            inputId = paste0("color_", id),
+            label = NULL,
+            value = current_col,
+            showColour = "both"
+          )
+        }
       }
 
       symbol_input <- if(input$symbol_mode=="Manual"){
@@ -147,7 +185,8 @@ server <- function(input, output, session){
     req(input$data_cols)
     df <- data()
 
-    values <- unique(as.character(unlist(df[input$data_cols])))
+    # Standardize all values
+    values <- unique(sapply(as.character(unlist(df[input$data_cols])), standardize_value))
 
     # Stable palette
     if(input$color_mode=="Auto"){
@@ -157,6 +196,11 @@ server <- function(input, output, session){
 
     colors <- sapply(values, function(val){
       id <- safe_id(val)
+
+      # Always use grey for Unknown
+      if(val == "Unknown") {
+        return("#808080")
+      }
 
       if(input$color_mode=="Auto"){
         pal[val]
@@ -185,16 +229,57 @@ server <- function(input, output, session){
     )
   })
 
-  # ---- Download ----
-  output$download <- downloadHandler(
-    filename = function(){
-      paste0("itol_SYMBOL_", Sys.Date(), ".txt")
-    },
-    content = function(file){
-
-      df <- data()
+  # ---- Generate output content ----
+  output_content <- reactive({
+    req(input$data_cols, input$id_col)
+    
+    df <- data()
+    
+    if(input$output_type == "METADATA") {
+      # METADATA format with all mandatory headers
+      field_labels <- paste(input$data_cols, collapse = ",")
+      
+      lines <- c(
+        "METADATA",
+        "#use this template to set or update the metadata associated with tree nodes. Metadata values can be numeric or textual",
+        "",
+        "#lines starting with a hash are comments and ignored during parsing",
+        "",
+        "#=================================================================#",
+        "#                    MANDATORY SETTINGS                           #",
+        "#=================================================================#",
+        "#select the separator which is used to delimit the data below (TAB,SPACE or COMMA).This separator must be used throughout this file (except in the SEPARATOR line, which uses space).",
+        "",
+        "#SEPARATOR TAB",
+        "#SEPARATOR SPACE",
+        "SEPARATOR COMMA",
+        "",
+        "#define the metadata field names. Field names can be any text string. If 'bootstrap' is specified, the original bootstrap values in the tree will be overwritten (and must be present)",
+        "",
+        paste0("FIELD_LABELS,", field_labels),
+        "",
+        "#Internal tree nodes can be specified by using IDs directly, or through the 'last common ancestor' method described in iTOL help pages",
+        "#=================================================================#",
+        "#       Actual data follows after the \"DATA\" keyword              #",
+        "#=================================================================#",
+        "DATA",
+        "#NODE_ID,FIELD1_METADATA_VALUE,FIELD2_METADATA_VALUE...."
+      )
+      
+      # Add data rows with standardized values
+      for(i in seq_len(nrow(df))) {
+        row_data <- c(
+          as.character(df[[input$id_col]][i]),
+          sapply(input$data_cols, function(col) standardize_value(df[[col]][i]))
+        )
+        lines <- c(lines, paste(row_data, collapse = ","))
+      }
+      
+      return(lines)
+      
+    } else {
+      # SYMBOL format
       map <- mapping()
-
       lines <- c()
 
       for(col_i in seq_along(input$data_cols)){
@@ -202,7 +287,8 @@ server <- function(input, output, session){
         position <- -col_i
 
         for(i in seq_len(nrow(df))){
-          val <- as.character(df[[col]][i])
+          # Standardize the value
+          val <- standardize_value(df[[col]][i])
           idx <- match(val, map$value)
 
           sym <- map$symbol[idx]
@@ -223,13 +309,13 @@ server <- function(input, output, session){
         }
       }
 
-      # ---- Header (STRICT iTOL FORMAT) ----
+      # Header
       header <- c(
         "DATASET_SYMBOL",
         "",
         "SEPARATOR COMMA",
         "",
-        "DATASET_LABEL,Generated",
+        paste0("DATASET_LABEL,", input$dataset_label),
         "",
         "COLOR,#000000",
         "",
@@ -244,7 +330,24 @@ server <- function(input, output, session){
         "ID,symbol,size,color,fill,position,label"
       )
 
-      writeLines(c(header, lines), file)
+      return(c(header, lines))
+    }
+  })
+
+  # ---- Preview ----
+  output$preview <- renderText({
+    req(output_content())
+    paste(output_content(), collapse = "\n")
+  })
+
+  # ---- Download ----
+  output$download <- downloadHandler(
+    filename = function(){
+      type <- if(input$output_type == "METADATA") "METADATA" else "SYMBOL"
+      paste0("itol_", type, "_", Sys.Date(), ".txt")
+    },
+    content = function(file){
+      writeLines(output_content(), file)
     }
   )
 }

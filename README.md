@@ -123,4 +123,4 @@ mleeuwerik@DSK-MEYE-003:~$ ssh -L 8000:localhost:8000 m.leeuwerik@srv-lnx-meye1
 
 To run Rshiny app Rscript run_app.R 
 
-Shapes works, auto coloring works, manual color does not.. Need more columns option, metadata etc, needs also an automatic legend for iTOL.
+Should be handeld per column So for each column a seperate symbol setting section / division in headers. So that for example column 1 can be automated colors and manual symbols and column 2 symbols and colors manual column 3 both symbols and colors automated etc. I also need seperate text files per column with a good file description name. Legend should also reflect the column choosen.
