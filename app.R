@@ -26,7 +26,6 @@ symbol_names <- c(
 standardize_value <- function(x) {
   if (is.na(x) || is.null(x)) return("Unknown")
   x_char <- as.character(x)
-  # Check for NA, empty string, or whitespace-only string
   if (x_char == "NA" || x_char == "" || grepl("^\\s+$", x_char)) {
     return("Unknown")
   }
@@ -53,16 +52,10 @@ ui <- fluidPage(
       # SYMBOL-specific controls
       conditionalPanel(
         condition = "input.output_type == 'SYMBOL'",
-        radioButtons("color_mode","Color mode",
-                     choices=c("Auto","Manual"), selected="Auto"),
-
-        radioButtons("symbol_mode","Symbol mode",
-                     choices=c("Auto","Manual"), selected="Auto"),
-
         numericInput("max_size","Max size",10, min=1)
       ),
 
-      downloadButton("download","Download iTOL")
+      uiOutput("download_ui")
     ),
 
     mainPanel(
@@ -72,7 +65,7 @@ ui <- fluidPage(
         tabPanel("Symbol Settings",
                  conditionalPanel(
                    condition = "input.output_type == 'SYMBOL'",
-                   uiOutput("value_ui")
+                   uiOutput("column_settings_ui")
                  ),
                  conditionalPanel(
                    condition = "input.output_type == 'METADATA'",
@@ -80,7 +73,7 @@ ui <- fluidPage(
                  )
         ),
         tabPanel("Output Preview",
-                 verbatimTextOutput("preview"))
+                 uiOutput("preview_ui"))
       )
     )
   )
@@ -119,154 +112,172 @@ server <- function(input, output, session){
     )
   })
 
-  # ---- Value UI (manual controls) ----
-  output$value_ui <- renderUI({
+  # ---- Per-column settings UI ----
+  output$column_settings_ui <- renderUI({
     req(input$data_cols)
     df <- data()
 
-    # Standardize all values
-    values <- unique(sapply(as.character(unlist(df[input$data_cols])), standardize_value))
-
-    tagList(lapply(values, function(val){
-
-      id <- safe_id(val)
-
-      # Preserve color, but force grey for Unknown
-      current_col <- isolate(input[[paste0("color_", id)]])
-      if(val == "Unknown") {
-        current_col <- "#808080"
-      } else if(is.null(current_col)) {
-        current_col <- "#808080"
-      }
-
-      # Preserve symbol
-      current_sym <- isolate(input[[paste0("symbol_", id)]])
-      if(is.null(current_sym)) current_sym <- 2
-
-      # Disable color picker for Unknown
-      color_input <- if(input$color_mode=="Manual"){
-        if(val == "Unknown") {
-          tags$span(style="color:#666;font-size:0.9em;", "(Fixed: Grey)")
-        } else {
-          colourInput(
-            inputId = paste0("color_", id),
-            label = NULL,
-            value = current_col,
-            showColour = "both"
-          )
-        }
-      }
-
-      symbol_input <- if(input$symbol_mode=="Manual"){
-        selectInput(
-          inputId = paste0("symbol_", id),
-          label = NULL,
-          choices = symbol_names,
-          selected = current_sym,
-          width = "150px"
-        )
-      }
-
+    lapply(input$data_cols, function(col) {
+      # Get unique values for this column
+      col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
+      
       tags$div(
-        style="margin-bottom:8px;",
-        tags$span(
-          style = paste0("display:inline-block;width:15px;height:15px;background:", current_col, ";margin-right:5px;border:1px solid black;")
+        style = "border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px;",
+        tags$h4(col),
+        
+        # Color mode for this column
+        radioButtons(
+          paste0("color_mode_", col),
+          "Color mode",
+          choices = c("Auto", "Manual"),
+          selected = "Auto",
+          inline = TRUE
         ),
-        tags$b(val),
-        tags$br(),
-        color_input,
-        symbol_input
+        
+        # Symbol mode for this column
+        radioButtons(
+          paste0("symbol_mode_", col),
+          "Symbol mode",
+          choices = c("Auto", "Manual"),
+          selected = "Auto",
+          inline = TRUE
+        ),
+        
+        # Value-specific controls
+        tags$div(
+          style = "margin-top: 10px;",
+          lapply(col_values, function(val) {
+            id <- paste0(col, "_", safe_id(val))
+            
+            # Get current values
+            color_input_id <- paste0("color_", id)
+            symbol_input_id <- paste0("symbol_", id)
+            
+            current_col <- isolate(input[[color_input_id]])
+            if(val == "Unknown") {
+              current_col <- "#808080"
+            } else if(is.null(current_col)) {
+              current_col <- "#808080"
+            }
+            
+            current_sym <- isolate(input[[symbol_input_id]])
+            if(is.null(current_sym)) current_sym <- 2
+            
+            # Color picker
+            color_input <- conditionalPanel(
+              condition = sprintf("input['color_mode_%s'] == 'Manual'", col),
+              if(val == "Unknown") {
+                tags$span(style="color:#666;font-size:0.9em;margin-left:10px;", "(Fixed: Grey)")
+              } else {
+                colourInput(
+                  inputId = color_input_id,
+                  label = NULL,
+                  value = current_col,
+                  showColour = "both"
+                )
+              }
+            )
+            
+            # Symbol picker
+            symbol_input <- conditionalPanel(
+              condition = sprintf("input['symbol_mode_%s'] == 'Manual'", col),
+              selectInput(
+                inputId = symbol_input_id,
+                label = NULL,
+                choices = symbol_names,
+                selected = current_sym,
+                width = "150px"
+              )
+            )
+            
+            tags$div(
+              style = "margin-bottom: 8px; padding: 5px;",
+              tags$span(
+                style = paste0("display:inline-block;width:15px;height:15px;background:", current_col, ";margin-right:5px;border:1px solid black;")
+              ),
+              tags$b(val),
+              color_input,
+              symbol_input
+            )
+          })
+        )
       )
-    }))
+    })
   })
 
-  # ---- Mapping ----
-  mapping <- reactive({
-    req(input$data_cols)
+  # ---- Mapping per column ----
+  mapping_for_column <- function(col) {
+    req(data())
     df <- data()
-
-    # Standardize all values
-    values <- unique(sapply(as.character(unlist(df[input$data_cols])), standardize_value))
-
-    # Stable palette
-    if(input$color_mode=="Auto"){
-      pal <- hue_pal()(length(values))
-      names(pal) <- values
+    
+    col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
+    
+    color_mode <- input[[paste0("color_mode_", col)]]
+    symbol_mode <- input[[paste0("symbol_mode_", col)]]
+    
+    if(is.null(color_mode)) color_mode <- "Auto"
+    if(is.null(symbol_mode)) symbol_mode <- "Auto"
+    
+    # Colors
+    if(color_mode == "Auto") {
+      pal <- hue_pal()(length(col_values))
+      names(pal) <- col_values
     }
-
-    colors <- sapply(values, function(val){
-      id <- safe_id(val)
-
-      # Always use grey for Unknown
+    
+    colors <- sapply(col_values, function(val) {
       if(val == "Unknown") {
         return("#808080")
       }
-
-      if(input$color_mode=="Auto"){
+      
+      if(color_mode == "Auto") {
         pal[val]
       } else {
-        col <- input[[paste0("color_", id)]]
-        if(is.null(col)) "#808080" else col
+        id <- paste0(col, "_", safe_id(val))
+        col_val <- input[[paste0("color_", id)]]
+        if(is.null(col_val)) "#808080" else col_val
       }
     })
-
-    symbols <- sapply(values, function(val){
-      id <- safe_id(val)
-
-      if(input$symbol_mode=="Auto"){
+    
+    # Symbols
+    symbols <- sapply(col_values, function(val) {
+      if(symbol_mode == "Auto") {
         2
       } else {
+        id <- paste0(col, "_", safe_id(val))
         sym <- input[[paste0("symbol_", id)]]
         if(is.null(sym)) 2 else as.numeric(sym)
       }
     })
-
+    
     data.frame(
-      value = values,
+      value = col_values,
       color = colors,
       symbol = symbols,
       stringsAsFactors = FALSE
     )
-  })
+  }
 
-  # ---- Generate output content ----
-  output_content <- reactive({
+  # ---- Generate output content per column ----
+  output_content_list <- reactive({
     req(input$data_cols, input$id_col)
     
     df <- data()
     
     if(input$output_type == "METADATA") {
-      # METADATA format with all mandatory headers
+      # Single METADATA file
       field_labels <- paste(input$data_cols, collapse = ",")
       
       lines <- c(
         "METADATA",
         "#use this template to set or update the metadata associated with tree nodes. Metadata values can be numeric or textual",
         "",
-        "#lines starting with a hash are comments and ignored during parsing",
-        "",
-        "#=================================================================#",
-        "#                    MANDATORY SETTINGS                           #",
-        "#=================================================================#",
-        "#select the separator which is used to delimit the data below (TAB,SPACE or COMMA).This separator must be used throughout this file (except in the SEPARATOR line, which uses space).",
-        "",
-        "#SEPARATOR TAB",
-        "#SEPARATOR SPACE",
         "SEPARATOR COMMA",
-        "",
-        "#define the metadata field names. Field names can be any text string. If 'bootstrap' is specified, the original bootstrap values in the tree will be overwritten (and must be present)",
         "",
         paste0("FIELD_LABELS,", field_labels),
         "",
-        "#Internal tree nodes can be specified by using IDs directly, or through the 'last common ancestor' method described in iTOL help pages",
-        "#=================================================================#",
-        "#       Actual data follows after the \"DATA\" keyword              #",
-        "#=================================================================#",
-        "DATA",
-        "#NODE_ID,FIELD1_METADATA_VALUE,FIELD2_METADATA_VALUE...."
+        "DATA"
       )
       
-      # Add data rows with standardized values
       for(i in seq_len(nrow(df))) {
         row_data <- c(
           as.character(df[[input$id_col]][i]),
@@ -275,25 +286,26 @@ server <- function(input, output, session){
         lines <- c(lines, paste(row_data, collapse = ","))
       }
       
-      return(lines)
+      list(METADATA = lines)
       
     } else {
-      # SYMBOL format
-      map <- mapping()
-      lines <- c()
-
-      for(col_i in seq_along(input$data_cols)){
+      # Separate SYMBOL file per column
+      result <- list()
+      
+      for(col_i in seq_along(input$data_cols)) {
         col <- input$data_cols[col_i]
-        position <- -col_i
-
-        for(i in seq_len(nrow(df))){
-          # Standardize the value
+        map <- mapping_for_column(col)
+        lines <- c()
+        
+        position <- -1  # Each file has its own position
+        
+        for(i in seq_len(nrow(df))) {
           val <- standardize_value(df[[col]][i])
           idx <- match(val, map$value)
-
+          
           sym <- map$symbol[idx]
           colr <- map$color[idx]
-
+          
           lines <- c(lines,
             paste(
               df[[input$id_col]][i],
@@ -303,54 +315,137 @@ server <- function(input, output, session){
               1,
               position,
               val,
-              sep=","
+              sep = ","
             )
           )
         }
+        
+        # Header
+        header <- c(
+          "DATASET_SYMBOL",
+          "",
+          "SEPARATOR COMMA",
+          "",
+          paste0("DATASET_LABEL,", input$dataset_label, " - ", col),
+          "",
+          "COLOR,#000000",
+          "",
+          "LEGEND_TITLE,", col,
+          paste0("LEGEND_SHAPES,", paste(map$symbol, collapse = ",")),
+          paste0("LEGEND_COLORS,", paste(map$color, collapse = ",")),
+          paste0("LEGEND_LABELS,", paste(map$value, collapse = ",")),
+          "",
+          paste0("MAXIMUM_SIZE,", input$max_size),
+          "",
+          "DATA",
+          "ID,symbol,size,color,fill,position,label"
+        )
+        
+        result[[col]] <- c(header, lines)
       }
+      
+      result
+    }
+  })
 
-      # Header
-      header <- c(
-        "DATASET_SYMBOL",
-        "",
-        "SEPARATOR COMMA",
-        "",
-        paste0("DATASET_LABEL,", input$dataset_label),
-        "",
-        "COLOR,#000000",
-        "",
-        "LEGEND_TITLE,Legend",
-        paste0("LEGEND_SHAPES,", paste(map$symbol, collapse=",")),
-        paste0("LEGEND_COLORS,", paste(map$color, collapse=",")),
-        paste0("LEGEND_LABELS,", paste(map$value, collapse=",")),
-        "",
-        paste0("MAXIMUM_SIZE,", input$max_size),
-        "",
-        "DATA",
-        "ID,symbol,size,color,fill,position,label"
+  # ---- Preview UI ----
+  output$preview_ui <- renderUI({
+    req(output_content_list())
+    
+    content_list <- output_content_list()
+    
+    # Create tabs for each file
+    tab_list <- lapply(names(content_list), function(name) {
+      tabPanel(
+        name,
+        verbatimTextOutput(paste0("preview_", safe_id(name)))
       )
-
-      return(c(header, lines))
-    }
+    })
+    
+    do.call(tabsetPanel, tab_list)
+  })
+  
+  # ---- Preview outputs (dynamic) ----
+  observe({
+    req(output_content_list())
+    content_list <- output_content_list()
+    
+    lapply(names(content_list), function(name) {
+      output_id <- paste0("preview_", safe_id(name))
+      
+      output[[output_id]] <- renderPrint({
+        cat(paste(content_list[[name]], collapse = "\n"))
+      })
+    })
   })
 
-  # ---- Preview ----
-  output$preview <- renderText({
-    req(output_content())
-    paste(output_content(), collapse = "\n")
-  })
-
-  # ---- Download ----
-  output$download <- downloadHandler(
-    filename = function(){
-      type <- if(input$output_type == "METADATA") "METADATA" else "SYMBOL"
-      paste0("itol_", type, "_", Sys.Date(), ".txt")
-    },
-    content = function(file){
-      writeLines(output_content(), file)
+  # ---- Download UI (replaces single download button in sidebar) ----
+  output$download_ui <- renderUI({
+    req(output_content_list())
+    content_list <- output_content_list()
+    
+    if(length(content_list) == 1) {
+      # Single file - one download button
+      downloadButton("download_single", "Download File")
+    } else {
+      # Multiple files - button for each
+      tagList(
+        tags$h5("Download Files:"),
+        lapply(names(content_list), function(name) {
+          tags$div(
+            style = "margin-bottom: 5px;",
+            downloadButton(
+              paste0("download_", safe_id(name)),
+              label = if(input$output_type == "METADATA") {
+                "Download metadata.txt"
+              } else {
+                paste0("Download ", name, ".txt")
+              },
+              style = "width: 100%;"
+            )
+          )
+        })
+      )
     }
-  )
+  })
+  
+  # ---- Individual download handlers ----
+  observe({
+    req(output_content_list())
+    content_list <- output_content_list()
+    
+    # Create handler for each file
+    lapply(names(content_list), function(name) {
+      output[[paste0("download_", safe_id(name))]] <- downloadHandler(
+        filename = function() {
+          if(input$output_type == "METADATA") {
+            "metadata.txt"
+          } else {
+            paste0("symbol_", name, ".txt")
+          }
+        },
+        content = function(file) {
+          writeLines(content_list[[name]], file)
+        }
+      )
+    })
+    
+    # Single file handler
+    output$download_single <- downloadHandler(
+      filename = function() {
+        name <- names(content_list)[1]
+        if(input$output_type == "METADATA") {
+          "metadata.txt"
+        } else {
+          paste0("symbol_", name, ".txt")
+        }
+      },
+      content = function(file) {
+        writeLines(content_list[[names(content_list)[1]]], file)
+      }
+    )
+  })
 }
 
-# ---------- RUN ----------
+# ---------- Run app ----------
 shinyApp(ui, server)
