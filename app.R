@@ -52,7 +52,7 @@ ui <- fluidPage(
       # SYMBOL-specific controls
       conditionalPanel(
         condition = "input.output_type == 'SYMBOL'",
-        numericInput("max_size","Max size",10, min=1)
+        numericInput("max_size","Symbol size",10, min=1)
       ),
 
       uiOutput("download_ui")
@@ -330,7 +330,7 @@ server <- function(input, output, session){
           "",
           "COLOR,#000000",
           "",
-          "LEGEND_TITLE,", col,
+          paste0("LEGEND_TITLE,", col),
           paste0("LEGEND_SHAPES,", paste(map$symbol, collapse = ",")),
           paste0("LEGEND_COLORS,", paste(map$color, collapse = ",")),
           paste0("LEGEND_LABELS,", paste(map$value, collapse = ",")),
@@ -449,3 +449,4 @@ server <- function(input, output, session){
 
 # ---------- Run app ----------
 shinyApp(ui, server)
+
