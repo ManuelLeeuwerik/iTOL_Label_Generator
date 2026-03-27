@@ -26,7 +26,7 @@ symbol_names <- c(
 standardize_value <- function(x) {
   if (is.na(x) || is.null(x)) return("Unknown")
   x_char <- as.character(x)
-  if (x_char == "NA" || x_char == "" || grepl("^\\s+$", x_char)) {
+  if (x_char == "NA" || x_char == "N/A" || x_char == "unknown" || x_char == "" || grepl("^\\s+$", x_char)) {
     return("Unknown")
   }
   return(x_char)
