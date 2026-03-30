@@ -64,7 +64,7 @@ ui <- fluidPage(
       # SYMBOL-specific controls
       conditionalPanel(
         condition = "input.output_type == 'SYMBOL'",
-        numericInput("max_size","Symbol size",10, min=1)
+        numericInput("max_size","Symbol size", 5, min=1)
       ),
 
       uiOutput("download_ui")
@@ -88,6 +88,8 @@ ui <- fluidPage(
            p("CHANGE_LABEL will replace current labels with new labels from selected columns")
          )
         ),
+        tabPanel("ColorBrewer Palettes",
+                 plotOutput("brewer_plot", height = "800px")),
         tabPanel("Output Preview",
                  uiOutput("preview_ui"))
       )
@@ -137,13 +139,19 @@ server <- function(input, output, session){
     )
   })
 
+  # ---- Display all ColorBrewer palettes ----
+  output$brewer_plot <- renderPlot({
+    display.brewer.all()
+  })
+
   # ---- Per-column settings UI ----
   output$column_settings_ui <- renderUI({
     req(input$data_cols)
     df <- data()
     
     brewer_pals <- get_brewer_palettes()
-    # Create named list for selectInput with headers
+    
+    # Build palette choices
     palette_choices <- list()
     palette_choices[["--- Sequential ---"]] <- ""
     for(pal in brewer_pals$Sequential) {
@@ -162,6 +170,15 @@ server <- function(input, output, session){
       # Get unique values for this column
       col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
       
+      # Preserve current settings
+      current_color_mode <- input[[paste0("color_mode_", col)]]
+      current_brewer_pal <- input[[paste0("brewer_palette_", col)]]
+      current_symbol_mode <- input[[paste0("symbol_mode_", col)]]
+      
+      if(is.null(current_color_mode)) current_color_mode <- "Auto (Hue)"
+      if(is.null(current_brewer_pal)) current_brewer_pal <- "Set1"
+      if(is.null(current_symbol_mode)) current_symbol_mode <- "Auto"
+      
       tags$div(
         style = "border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px;",
         tags$h4(col),
@@ -171,18 +188,18 @@ server <- function(input, output, session){
           paste0("color_mode_", col),
           "Color mode",
           choices = c("Auto (Hue)", "ColorBrewer", "Manual"),
-          selected = "Auto (Hue)",
+          selected = current_color_mode,
           inline = TRUE
         ),
         
-        # ColorBrewer palette selector (only shown when ColorBrewer is selected)
+        # ColorBrewer palette selector
         conditionalPanel(
           condition = sprintf("input['color_mode_%s'] == 'ColorBrewer'", col),
           selectInput(
             paste0("brewer_palette_", col),
             "ColorBrewer palette",
             choices = palette_choices,
-            selected = "Set1"
+            selected = current_brewer_pal
           )
         ),
         
@@ -191,7 +208,7 @@ server <- function(input, output, session){
           paste0("symbol_mode_", col),
           "Symbol mode",
           choices = c("Auto", "Manual"),
-          selected = "Auto",
+          selected = current_symbol_mode,
           inline = TRUE
         ),
         
@@ -201,33 +218,27 @@ server <- function(input, output, session){
           lapply(col_values, function(val) {
             id <- paste0(col, "_", safe_id(val))
             
-            # Get current values
+            # Get current values - preserve them
             color_input_id <- paste0("color_", id)
             symbol_input_id <- paste0("symbol_", id)
             
             current_col <- isolate(input[[color_input_id]])
-            if(val == "Unknown") {
-              current_col <- "#808080"
-            } else if(is.null(current_col)) {
+            if(is.null(current_col)) {
               current_col <- "#808080"
             }
             
             current_sym <- isolate(input[[symbol_input_id]])
             if(is.null(current_sym)) current_sym <- 1
             
-            # Color picker
+            # Color picker (no special treatment for Unknown)
             color_input <- conditionalPanel(
               condition = sprintf("input['color_mode_%s'] == 'Manual'", col),
-              if(val == "Unknown") {
-                tags$span(style="color:#666;font-size:0.9em;margin-left:10px;", "(Fixed: Grey)")
-              } else {
-                colourInput(
-                  inputId = color_input_id,
-                  label = NULL,
-                  value = current_col,
-                  showColour = "both"
-                )
-              }
+              colourInput(
+                inputId = color_input_id,
+                label = NULL,
+                value = current_col,
+                showColour = "both"
+              )
             )
             
             # Symbol picker
@@ -292,10 +303,6 @@ server <- function(input, output, session){
     }
     
     colors <- sapply(col_values, function(val) {
-      if(val == "Unknown") {
-        return("#808080")
-      }
-      
       if(color_mode %in% c("Auto (Hue)", "ColorBrewer")) {
         pal[val]
       } else {
@@ -383,7 +390,7 @@ server <- function(input, output, session){
         map <- mapping_for_column(col)
         lines <- c()
         
-        position <- -1  # Each file has its own position
+        position <- -1
         
         for(i in seq_len(nrow(df))) {
           val <- standardize_value(df[[col]][i])
@@ -440,7 +447,6 @@ server <- function(input, output, session){
     
     content_list <- output_content_list()
     
-    # Create tabs for each file
     tab_list <- lapply(names(content_list), function(name) {
       tabPanel(
         name,
@@ -465,16 +471,14 @@ server <- function(input, output, session){
     })
   })
 
-  # ---- Download UI (replaces single download button in sidebar) ----
+  # ---- Download UI ----
   output$download_ui <- renderUI({
     req(output_content_list())
     content_list <- output_content_list()
     
     if(length(content_list) == 1) {
-      # Single file - one download button
       downloadButton("download_single", "Download File")
     } else {
-      # Multiple files - button for each
       tagList(
         tags$h5("Download Files:"),
         lapply(names(content_list), function(name) {
@@ -502,7 +506,6 @@ server <- function(input, output, session){
     req(output_content_list())
     content_list <- output_content_list()
     
-    # Create handler for each file
     lapply(names(content_list), function(name) {
       output[[paste0("download_", safe_id(name))]] <- downloadHandler(
         filename = function() {
@@ -520,7 +523,6 @@ server <- function(input, output, session){
       )
     })
     
-    # Single file handler
     output$download_single <- downloadHandler(
       filename = function() {
         name <- names(content_list)[1]

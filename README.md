@@ -126,5 +126,6 @@ To run Rshiny app Rscript run_app.R
 Make a readme in the app and how to use the app. Fix previews.
 Change all option, so column X i want instead of standard square symbol them all circle 
 Download all button!
-Color themes. Utilizing more iTOL functions.
+Utilizing more iTOL functions.
 Look into Rshiny live (https://posit-dev.github.io/r-shinylive/)
+
