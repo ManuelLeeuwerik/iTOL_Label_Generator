@@ -147,7 +147,9 @@ server <- function(input, output, session){
   # ---- Per-column settings UI ----
   output$column_settings_ui <- renderUI({
     req(input$data_cols)
-    df <- data()
+    
+    # Use isolate to prevent reactive loop
+    df <- isolate(data())
     
     brewer_pals <- get_brewer_palettes()
     
@@ -170,14 +172,16 @@ server <- function(input, output, session){
       # Get unique values for this column
       col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
       
-      # Preserve current settings
-      current_color_mode <- input[[paste0("color_mode_", col)]]
-      current_brewer_pal <- input[[paste0("brewer_palette_", col)]]
-      current_symbol_mode <- input[[paste0("symbol_mode_", col)]]
+      # Use isolate to get current settings without creating reactive dependencies
+      current_color_mode <- isolate(input[[paste0("color_mode_", col)]])
+      current_brewer_pal <- isolate(input[[paste0("brewer_palette_", col)]])
+      current_symbol_mode <- isolate(input[[paste0("symbol_mode_", col)]])
+      current_auto_symbol <- isolate(input[[paste0("auto_symbol_", col)]])
       
       if(is.null(current_color_mode)) current_color_mode <- "Auto (Hue)"
       if(is.null(current_brewer_pal)) current_brewer_pal <- "Set1"
       if(is.null(current_symbol_mode)) current_symbol_mode <- "Auto"
+      if(is.null(current_auto_symbol)) current_auto_symbol <- 1
       
       tags$div(
         style = "border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px;",
@@ -212,57 +216,70 @@ server <- function(input, output, session){
           inline = TRUE
         ),
         
-        # Value-specific controls
-        tags$div(
-          style = "margin-top: 10px;",
-          lapply(col_values, function(val) {
-            id <- paste0(col, "_", safe_id(val))
-            
-            # Get current values - preserve them
-            color_input_id <- paste0("color_", id)
-            symbol_input_id <- paste0("symbol_", id)
-            
-            current_col <- isolate(input[[color_input_id]])
-            if(is.null(current_col)) {
-              current_col <- "#808080"
-            }
-            
-            current_sym <- isolate(input[[symbol_input_id]])
-            if(is.null(current_sym)) current_sym <- 1
-            
-            # Color picker (no special treatment for Unknown)
-            color_input <- conditionalPanel(
-              condition = sprintf("input['color_mode_%s'] == 'Manual'", col),
-              colourInput(
-                inputId = color_input_id,
-                label = NULL,
-                value = current_col,
-                showColour = "both"
+        # Auto symbol selector (applies to all values)
+        conditionalPanel(
+          condition = sprintf("input['symbol_mode_%s'] == 'Auto'", col),
+          selectInput(
+            paste0("auto_symbol_", col),
+            "Symbol for all values",
+            choices = symbol_names,
+            selected = current_auto_symbol,
+            width = "200px"
+          )
+        ),
+        
+        # Value-specific controls (Manual mode for both colors and symbols)
+        conditionalPanel(
+          condition = sprintf("input['symbol_mode_%s'] == 'Manual' || input['color_mode_%s'] == 'Manual'", col, col),
+          tags$div(
+            style = "margin-top: 10px;",
+            lapply(col_values, function(val) {
+              id <- paste0(col, "_", safe_id(val))
+              
+              # Get current values - preserve them
+              color_input_id <- paste0("color_", id)
+              symbol_input_id <- paste0("symbol_", id)
+              
+              current_col <- isolate(input[[color_input_id]])
+              if(is.null(current_col)) {
+                current_col <- "#808080"
+              }
+              
+              current_sym <- isolate(input[[symbol_input_id]])
+              if(is.null(current_sym)) current_sym <- 1
+              
+              tags$div(
+                style = "margin-bottom: 8px; padding: 5px;",
+                tags$span(
+                  style = paste0("display:inline-block;width:15px;height:15px;background:", current_col, ";margin-right:5px;border:1px solid black;")
+                ),
+                tags$b(val),
+                
+                # Color picker - shown only in Manual color mode
+                conditionalPanel(
+                  condition = sprintf("input['color_mode_%s'] == 'Manual'", col),
+                  colourInput(
+                    inputId = color_input_id,
+                    label = NULL,
+                    value = current_col,
+                    showColour = "both"
+                  )
+                ),
+                
+                # Symbol picker - shown only in Manual symbol mode
+                conditionalPanel(
+                  condition = sprintf("input['symbol_mode_%s'] == 'Manual'", col),
+                  selectInput(
+                    inputId = symbol_input_id,
+                    label = NULL,
+                    choices = symbol_names,
+                    selected = current_sym,
+                    width = "150px"
+                  )
+                )
               )
-            )
-            
-            # Symbol picker
-            symbol_input <- conditionalPanel(
-              condition = sprintf("input['symbol_mode_%s'] == 'Manual'", col),
-              selectInput(
-                inputId = symbol_input_id,
-                label = NULL,
-                choices = symbol_names,
-                selected = current_sym,
-                width = "150px"
-              )
-            )
-            
-            tags$div(
-              style = "margin-bottom: 8px; padding: 5px;",
-              tags$span(
-                style = paste0("display:inline-block;width:15px;height:15px;background:", current_col, ";margin-right:5px;border:1px solid black;")
-              ),
-              tags$b(val),
-              color_input,
-              symbol_input
-            )
-          })
+            })
+          )
         )
       )
     })
@@ -315,7 +332,9 @@ server <- function(input, output, session){
     # Symbols
     symbols <- sapply(col_values, function(val) {
       if(symbol_mode == "Auto") {
-        1
+        # Use the selected auto symbol for all values
+        auto_symbol <- input[[paste0("auto_symbol_", col)]]
+        if(is.null(auto_symbol)) 1 else as.numeric(auto_symbol)
       } else {
         id <- paste0(col, "_", safe_id(val))
         sym <- input[[paste0("symbol_", id)]]
