@@ -46,7 +46,7 @@ get_brewer_palettes <- function() {
 
 # ---------- UI ----------
 ui <- fluidPage(
-  # Add CSS for logo
+  # Add CSS for logo and collapse styling
   tags$head(
     tags$style(HTML("
       .logo-container {
@@ -56,6 +56,32 @@ ui <- fluidPage(
       .logo-container img {
         max-width: 250px;
         height: auto;
+      }
+      .panel-heading {
+        background-color: #f5f5f5;
+        padding: 10px;
+        cursor: pointer;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 2px;
+      }
+      .panel-heading:hover {
+        background-color: #e9e9e9;
+      }
+      .panel-heading h4 {
+        margin: 0;
+        display: inline-block;
+      }
+      .collapse-icon {
+        float: right;
+        font-weight: bold;
+      }
+      .panel-body {
+        border: 1px solid #ddd;
+        border-top: none;
+        padding: 15px;
+        border-radius: 0 0 5px 5px;
+        margin-bottom: 20px;
       }
     "))
   ),
@@ -203,102 +229,116 @@ server <- function(input, output, session){
       if(is.null(current_symbol_mode)) current_symbol_mode <- "Auto"
       if(is.null(current_auto_symbol)) current_auto_symbol <- 1
       
-      tags$div(
-        style = "border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px;",
-        tags$h4(col),
-        
-        # Color mode for this column
-        radioButtons(
-          paste0("color_mode_", col),
-          "Color mode",
-          choices = c("Auto (Hue)", "ColorBrewer", "Manual"),
-          selected = current_color_mode,
-          inline = TRUE
+      collapse_id <- paste0("collapse_", safe_id(col))
+      
+      tagList(
+        # Collapsible header
+        tags$div(
+          class = "panel-heading",
+          `data-toggle` = "collapse",
+          `data-target` = paste0("#", collapse_id),
+          tags$h4(col),
+          tags$span(class = "collapse-icon", "▼")
         ),
         
-        # ColorBrewer palette selector
-        conditionalPanel(
-          condition = sprintf("input['color_mode_%s'] == 'ColorBrewer'", col),
-          selectInput(
-            paste0("brewer_palette_", col),
-            "ColorBrewer palette",
-            choices = palette_choices,
-            selected = current_brewer_pal
-          )
-        ),
-        
-        # Symbol mode for this column
-        radioButtons(
-          paste0("symbol_mode_", col),
-          "Symbol mode",
-          choices = c("Auto", "Manual"),
-          selected = current_symbol_mode,
-          inline = TRUE
-        ),
-        
-        # Auto symbol selector (applies to all values)
-        conditionalPanel(
-          condition = sprintf("input['symbol_mode_%s'] == 'Auto'", col),
-          selectInput(
-            paste0("auto_symbol_", col),
-            "Symbol for all values",
-            choices = symbol_names,
-            selected = current_auto_symbol,
-            width = "200px"
-          )
-        ),
-        
-        # Value-specific controls (Manual mode for both colors and symbols)
-        conditionalPanel(
-          condition = sprintf("input['symbol_mode_%s'] == 'Manual' || input['color_mode_%s'] == 'Manual'", col, col),
-          tags$div(
-            style = "margin-top: 10px;",
-            lapply(col_values, function(val) {
-              id <- paste0(col, "_", safe_id(val))
-              
-              # Get current values - preserve them
-              color_input_id <- paste0("color_", id)
-              symbol_input_id <- paste0("symbol_", id)
-              
-              current_col <- isolate(input[[color_input_id]])
-              if(is.null(current_col)) {
-                current_col <- "#808080"
-              }
-              
-              current_sym <- isolate(input[[symbol_input_id]])
-              if(is.null(current_sym)) current_sym <- 1
-              
-              tags$div(
-                style = "margin-bottom: 8px; padding: 5px;",
-                tags$span(
-                  style = paste0("display:inline-block;width:15px;height:15px;background:", current_col, ";margin-right:5px;border:1px solid black;")
-                ),
-                tags$b(val),
+        # Collapsible body
+        tags$div(
+          id = collapse_id,
+          class = "collapse in panel-body",
+          
+          # Color mode for this column
+          radioButtons(
+            paste0("color_mode_", col),
+            "Color mode",
+            choices = c("Auto (Hue)", "ColorBrewer", "Manual"),
+            selected = current_color_mode,
+            inline = TRUE
+          ),
+          
+          # ColorBrewer palette selector
+          conditionalPanel(
+            condition = sprintf("input['color_mode_%s'] == 'ColorBrewer'", col),
+            selectInput(
+              paste0("brewer_palette_", col),
+              "ColorBrewer palette",
+              choices = palette_choices,
+              selected = current_brewer_pal
+            )
+          ),
+          
+          # Symbol mode for this column
+          radioButtons(
+            paste0("symbol_mode_", col),
+            "Symbol mode",
+            choices = c("Auto", "Manual"),
+            selected = current_symbol_mode,
+            inline = TRUE
+          ),
+          
+          # Auto symbol selector (applies to all values)
+          conditionalPanel(
+            condition = sprintf("input['symbol_mode_%s'] == 'Auto'", col),
+            selectInput(
+              paste0("auto_symbol_", col),
+              "Symbol for all values",
+              choices = symbol_names,
+              selected = current_auto_symbol,
+              width = "200px"
+            )
+          ),
+          
+          # Value-specific controls (Manual mode for both colors and symbols)
+          conditionalPanel(
+            condition = sprintf("input['symbol_mode_%s'] == 'Manual' || input['color_mode_%s'] == 'Manual'", col, col),
+            tags$div(
+              style = "margin-top: 10px;",
+              lapply(col_values, function(val) {
+                id <- paste0(col, "_", safe_id(val))
                 
-                # Color picker - shown only in Manual color mode
-                conditionalPanel(
-                  condition = sprintf("input['color_mode_%s'] == 'Manual'", col),
-                  colourInput(
-                    inputId = color_input_id,
-                    label = NULL,
-                    value = current_col,
-                    showColour = "both"
-                  )
-                ),
+                # Get current values - preserve them
+                color_input_id <- paste0("color_", id)
+                symbol_input_id <- paste0("symbol_", id)
                 
-                                # Symbol picker - shown only in Manual symbol mode
-                conditionalPanel(
-                  condition = sprintf("input['symbol_mode_%s'] == 'Manual'", col),
-                  selectInput(
-                    inputId = symbol_input_id,
-                    label = NULL,
-                    choices = symbol_names,
-                    selected = current_sym,
-                    width = "150px"
+                                current_col <- isolate(input[[color_input_id]])
+                if(is.null(current_col)) {
+                  current_col <- "#808080"
+                }
+                
+                current_sym <- isolate(input[[symbol_input_id]])
+                if(is.null(current_sym)) current_sym <- 1
+                
+                tags$div(
+                  style = "margin-bottom: 8px; padding: 5px;",
+                  tags$span(
+                    style = paste0("display:inline-block;width:15px;height:15px;background:", current_col, ";margin-right:5px;border:1px solid black;")
+                  ),
+                  tags$b(val),
+                  
+                  # Color picker - shown only in Manual color mode
+                  conditionalPanel(
+                    condition = sprintf("input['color_mode_%s'] == 'Manual'", col),
+                    colourInput(
+                      inputId = color_input_id,
+                      label = NULL,
+                      value = current_col,
+                      showColour = "both"
+                    )
+                  ),
+                  
+                  # Symbol picker - shown only in Manual symbol mode
+                  conditionalPanel(
+                    condition = sprintf("input['symbol_mode_%s'] == 'Manual'", col),
+                    selectInput(
+                      inputId = symbol_input_id,
+                      label = NULL,
+                      choices = symbol_names,
+                      selected = current_sym,
+                      width = "150px"
+                    )
                   )
                 )
-              )
-            })
+              })
+            )
           )
         )
       )
