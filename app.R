@@ -12,6 +12,7 @@ library(digest)
 library(colourpicker)
 library(RColorBrewer)
 library(shinyWidgets)
+library(zip)
 
 # ---------- Helper Functions ----------
 
@@ -496,10 +497,19 @@ server <- function(input, output, session) {
             icon = icon("download")
           )
         } else {
-          # Multiple files
+          # Multiple files - offer both individual and bulk download
           tagList(
+            # Download all as ZIP
+            downloadButton(
+              "download_all_zip",
+              "Download All Files (ZIP)",
+              class = "btn-success w-100",
+              icon = icon("file-zipper")
+            ),
+            tags$br(),
+            tags$br(),
             div(class = "help-text",
-                "Download each annotation file separately:"),
+                "Or download each annotation file separately:"),
             tags$br(),
             lapply(names(content_list), function(name) {
               tags$div(
@@ -772,7 +782,7 @@ server <- function(input, output, session) {
         content <- c("DATASET_SYMBOL")
         content <- c(content, "SEPARATOR TAB")
         content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col), sep = "\t"))
-        content <- c(content, paste("COLOR", "#ffff00", sep = "\t"))
+        content <- c(content, paste("COLOR", "#2755ecff", sep = "\t"))
         content <- c(content, "")
         content <- c(content, paste("LEGEND_TITLE", col, sep = "\t"))
         content <- c(content, paste("LEGEND_SHAPES", paste(symbol_map, collapse = "\t"), sep = "\t"))
@@ -848,7 +858,39 @@ server <- function(input, output, session) {
       writeLines(content_list[[1]], file)
     }
   )
-  
+      
+  # Download all files as ZIP
+  output$download_all_zip <- downloadHandler(
+    filename = function() {
+      paste0(input$dataset_label, "_annotations_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip")
+    },
+    content = function(file) {
+      content_list <- output_content_list()
+      
+      # Create temporary directory
+      temp_dir <- tempdir()
+      temp_files <- c()
+      
+      # Write each file to temp directory
+      for(name in names(content_list)) {
+        temp_file <- file.path(temp_dir, paste0(name, ".txt"))
+        writeLines(content_list[[name]], temp_file)
+        temp_files <- c(temp_files, temp_file)
+      }
+      
+      # Create ZIP file
+      zip::zip(
+        zipfile = file,
+        files = basename(temp_files),
+        root = temp_dir,
+        mode = "cherry-pick"
+      )
+      
+      # Clean up temp files
+      unlink(temp_files)
+    }
+  )
+      
   # Dynamic download handlers for multiple files
   observe({
     req(output_content_list())
