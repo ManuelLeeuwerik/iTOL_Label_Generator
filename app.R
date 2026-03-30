@@ -46,10 +46,30 @@ get_brewer_palettes <- function() {
 
 # ---------- UI ----------
 ui <- fluidPage(
-  titlePanel("iTOL SYMBOL & METADATA Generator"),
+  # Add CSS for logo
+  tags$head(
+    tags$style(HTML("
+      .logo-container {
+        text-align: center;
+        margin: 20px 0;
+      }
+      .logo-container img {
+        max-width: 250px;
+        height: auto;
+      }
+    "))
+  ),
+  
+  titlePanel("iTOL Label Generator"),
 
   sidebarLayout(
     sidebarPanel(
+      # Logo at top of sidebar
+      div(class = "logo-container",
+          tags$img(src = "https://wi.knaw.nl/images/westerdijk-logo.png", 
+                   alt = "Westerdijk Institute Logo")
+      ),
+      
       fileInput("file", "Upload metadata",
                 accept = c(".tsv",".csv",".txt",".xlsx")),
 
@@ -266,7 +286,7 @@ server <- function(input, output, session){
                   )
                 ),
                 
-                # Symbol picker - shown only in Manual symbol mode
+                                # Symbol picker - shown only in Manual symbol mode
                 conditionalPanel(
                   condition = sprintf("input['symbol_mode_%s'] == 'Manual'", col),
                   selectInput(
@@ -285,7 +305,7 @@ server <- function(input, output, session){
     })
   })
 
-    # ---- Mapping per column ----
+  # ---- Mapping per column ----
   mapping_for_column <- function(col) {
     req(data())
     df <- data()

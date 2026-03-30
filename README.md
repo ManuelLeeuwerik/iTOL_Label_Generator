@@ -123,9 +123,11 @@ mleeuwerik@DSK-MEYE-003:~$ ssh -L 8000:localhost:8000 m.leeuwerik@srv-lnx-meye1
 
 To run Rshiny app Rscript run_app.R 
 
-Make a readme in the app and how to use the app. Fix previews.
-Change all option, so column X i want instead of standard square symbol them all circle 
-Download all button!
-Utilizing more iTOL functions.
-Look into Rshiny live (https://posit-dev.github.io/r-shinylive/)
-
+**To do**
+- Make a readme in the app and how to use the app. Fix previews.
+- Split app in server and UI (text, functions etc.)
+- Add option to filter for colorblind etc in ColorBrewer palettes.
+- Make in symbol settings the columns foldable the chosen options should still be cached, the same exact processing logic just visualy to get more space on the page if wanted. 
+- Download all button (zip)
+- Utilizing more iTOL functions.
+- Look into Rshiny live (https://posit-dev.github.io/r-shinylive/)
