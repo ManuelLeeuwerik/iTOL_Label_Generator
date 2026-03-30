@@ -7,6 +7,7 @@ library(dplyr)
 library(scales)
 library(digest)
 library(colourpicker)
+library(RColorBrewer)
 
 # ---------- Helpers ----------
 safe_id <- function(x) {
@@ -30,6 +31,17 @@ standardize_value <- function(x) {
     return("Unknown")
   }
   return(x_char)
+}
+
+# Get ColorBrewer palettes organized by type
+get_brewer_palettes <- function() {
+  list(
+    "Sequential" = c("Blues", "BuGn", "BuPu", "GnBu", "Greens", "Greys", "Oranges", 
+                     "OrRd", "PuBu", "PuBuGn", "PuRd", "Purples", "RdPu", "Reds", 
+                     "YlGn", "YlGnBu", "YlOrBr", "YlOrRd"),
+    "Qualitative" = c("Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", "Set2", "Set3"),
+    "Diverging" = c("BrBG", "PiYG", "PRGn", "PuOr", "RdBu", "RdGy", "RdYlBu", "RdYlGn", "Spectral")
+  )
 }
 
 # ---------- UI ----------
@@ -129,6 +141,22 @@ server <- function(input, output, session){
   output$column_settings_ui <- renderUI({
     req(input$data_cols)
     df <- data()
+    
+    brewer_pals <- get_brewer_palettes()
+    # Create named list for selectInput with headers
+    palette_choices <- list()
+    palette_choices[["--- Sequential ---"]] <- ""
+    for(pal in brewer_pals$Sequential) {
+      palette_choices[[pal]] <- pal
+    }
+    palette_choices[["--- Qualitative ---"]] <- ""
+    for(pal in brewer_pals$Qualitative) {
+      palette_choices[[pal]] <- pal
+    }
+    palette_choices[["--- Diverging ---"]] <- ""
+    for(pal in brewer_pals$Diverging) {
+      palette_choices[[pal]] <- pal
+    }
 
     lapply(input$data_cols, function(col) {
       # Get unique values for this column
@@ -142,9 +170,20 @@ server <- function(input, output, session){
         radioButtons(
           paste0("color_mode_", col),
           "Color mode",
-          choices = c("Auto", "Manual"),
-          selected = "Auto",
+          choices = c("Auto (Hue)", "ColorBrewer", "Manual"),
+          selected = "Auto (Hue)",
           inline = TRUE
+        ),
+        
+        # ColorBrewer palette selector (only shown when ColorBrewer is selected)
+        conditionalPanel(
+          condition = sprintf("input['color_mode_%s'] == 'ColorBrewer'", col),
+          selectInput(
+            paste0("brewer_palette_", col),
+            "ColorBrewer palette",
+            choices = palette_choices,
+            selected = "Set1"
+          )
         ),
         
         # Symbol mode for this column
@@ -218,7 +257,7 @@ server <- function(input, output, session){
     })
   })
 
-  # ---- Mapping per column ----
+    # ---- Mapping per column ----
   mapping_for_column <- function(col) {
     req(data())
     df <- data()
@@ -228,12 +267,27 @@ server <- function(input, output, session){
     color_mode <- input[[paste0("color_mode_", col)]]
     symbol_mode <- input[[paste0("symbol_mode_", col)]]
     
-    if(is.null(color_mode)) color_mode <- "Auto"
+    if(is.null(color_mode)) color_mode <- "Auto (Hue)"
     if(is.null(symbol_mode)) symbol_mode <- "Auto"
     
     # Colors
-    if(color_mode == "Auto") {
+    if(color_mode == "Auto (Hue)") {
       pal <- hue_pal()(length(col_values))
+      names(pal) <- col_values
+    } else if(color_mode == "ColorBrewer") {
+      brewer_pal_name <- input[[paste0("brewer_palette_", col)]]
+      if(is.null(brewer_pal_name) || brewer_pal_name == "") brewer_pal_name <- "Set1"
+      
+      # Get max colors available for this palette
+      max_colors <- brewer.pal.info[brewer_pal_name, "maxcolors"]
+      n_colors <- min(length(col_values), max_colors)
+      
+      if(length(col_values) <= max_colors) {
+        pal <- brewer.pal(max(3, length(col_values)), brewer_pal_name)[1:length(col_values)]
+      } else {
+        # If more values than colors, use colorRampPalette to interpolate
+        pal <- colorRampPalette(brewer.pal(max_colors, brewer_pal_name))(length(col_values))
+      }
       names(pal) <- col_values
     }
     
@@ -242,7 +296,7 @@ server <- function(input, output, session){
         return("#808080")
       }
       
-      if(color_mode == "Auto") {
+      if(color_mode %in% c("Auto (Hue)", "ColorBrewer")) {
         pal[val]
       } else {
         id <- paste0(col, "_", safe_id(val))
@@ -449,9 +503,27 @@ server <- function(input, output, session){
     content_list <- output_content_list()
     
     # Create handler for each file
-      lapply(names(content_list), function(name) {
-    output[[paste0("download_", safe_id(name))]] <- downloadHandler(
+    lapply(names(content_list), function(name) {
+      output[[paste0("download_", safe_id(name))]] <- downloadHandler(
+        filename = function() {
+          if(input$output_type == "METADATA") {
+            "metadata.txt"
+          } else if(input$output_type == "CHANGE_LABEL") {
+            "labels.txt"
+          } else {
+            paste0("symbol_", name, ".txt")
+          }
+        },
+        content = function(file) {
+          writeLines(content_list[[name]], file)
+        }
+      )
+    })
+    
+    # Single file handler
+    output$download_single <- downloadHandler(
       filename = function() {
+        name <- names(content_list)[1]
         if(input$output_type == "METADATA") {
           "metadata.txt"
         } else if(input$output_type == "CHANGE_LABEL") {
@@ -461,30 +533,11 @@ server <- function(input, output, session){
         }
       },
       content = function(file) {
-        writeLines(content_list[[name]], file)
+        writeLines(content_list[[names(content_list)[1]]], file)
       }
     )
-  })
-  
-  # Single file handler
-  output$download_single <- downloadHandler(
-    filename = function() {
-      name <- names(content_list)[1]
-      if(input$output_type == "METADATA") {
-        "metadata.txt"
-      } else if(input$output_type == "CHANGE_LABEL") {
-        "labels.txt"
-      } else {
-        paste0("symbol_", name, ".txt")
-      }
-    },
-    content = function(file) {
-      writeLines(content_list[[names(content_list)[1]]], file)
-    }
-  )
   })
 }
 
 # ---------- Run app ----------
 shinyApp(ui, server)
-
