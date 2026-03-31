@@ -679,6 +679,13 @@ server <- function(input, output, session) {
         
         tags$hr(),
         
+        # Fill/empty option for symbols
+        checkboxInput(
+          paste0("symbol_filled_", col),
+          "Fill symbols (uncheck for outline only)",
+          value = isolate(input[[paste0("symbol_filled_", col)]]) %||% TRUE
+        ),
+        
         # Manual configuration
         conditionalPanel(
           condition = sprintf("input['color_mode_%s'] == 'Manual' || input['symbol_mode_%s'] == 'Manual'", col, col),
@@ -749,9 +756,11 @@ server <- function(input, output, session) {
       # Get color and symbol settings
       color_mode <- input[[paste0("color_mode_", col)]]
       symbol_mode <- input[[paste0("symbol_mode_", col)]]
+      symbol_filled <- input[[paste0("symbol_filled_", col)]]
       
       if(is.null(color_mode)) color_mode <- "Auto (Hue)"
       if(is.null(symbol_mode)) symbol_mode <- "Auto"
+      if(is.null(symbol_filled)) symbol_filled <- TRUE
       
       # Generate colors
       if(color_mode == "ColorBrewer") {
@@ -816,7 +825,8 @@ server <- function(input, output, session) {
         val <- standardize_value(df[[col]][i])
         symbol <- symbol_map[val]
         color <- color_map[val]
-        content <- c(content, paste(id, symbol, input$max_size, color, "1", "-1", sep = "\t"))
+        fill_value <- if(symbol_filled) "1" else "0"
+        content <- c(content, paste(id, symbol, input$max_size, color, fill_value, "-1", sep = "\t"))
       }
       
       output_list[[col]] <- paste(content, collapse = "\n")
