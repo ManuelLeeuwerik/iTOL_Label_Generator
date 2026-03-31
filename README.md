@@ -130,3 +130,5 @@ To run Rshiny app Rscript run_app.R
 - Add option to filter for colorblind etc in ColorBrewer palettes.
 - Utilizing more iTOL functions.
 - Look into Rshiny live (https://posit-dev.github.io/r-shinylive/)
+- Have to order numeric data disregarding Unknown for the color palletes that go up (make a check box for numeric/range data or something)
+- Display field labels should be on for binary set automaticaly. 

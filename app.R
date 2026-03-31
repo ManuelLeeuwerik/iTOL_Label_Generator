@@ -392,6 +392,25 @@ ui <- page_sidebar(
           uiOutput("symbol_download_card")
         )
       ),
+
+      # Binary Set tab
+      nav_panel(
+        "Binary Set",
+        icon = icon("chart-simple"),
+        card_body(
+          div(class = "info-box",
+              p("Generate DATASET_BINARY annotations. Configure binary presence/absence patterns for each metadata column.")
+          ),
+          
+          # Binary configuration
+          uiOutput("binary_column_settings_ui"),
+          
+          tags$hr(),
+          
+          # Download section for binary
+          uiOutput("binary_download_card")
+        )
+      ),
       
       # Metadata tab
       nav_panel(
@@ -848,7 +867,222 @@ server <- function(input, output, session) {
       )
     )
   })
+
+    # ---- Binary tab: Column settings UI ----
+  output$binary_column_settings_ui <- renderUI({
+    req(input$data_cols)
+    
+    df <- isolate(data())
+    
+    # Create accordion for each column
+    accordion_items <- lapply(seq_along(input$data_cols), function(idx) {
+      col <- input$data_cols[idx]
+      col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
+      
+      # Get current settings
+      current_binary_shape <- isolate(input[[paste0("binary_shape_", col)]])
+      current_binary_color <- isolate(input[[paste0("binary_color_", col)]])
+      current_binary_filled <- isolate(input[[paste0("binary_filled_", col)]])
+      
+      if(is.null(current_binary_shape)) current_binary_shape <- 2
+      if(is.null(current_binary_color)) current_binary_color <- "#3498DB"
+      if(is.null(current_binary_filled)) current_binary_filled <- FALSE
+      
+      # Create accordion item
+      accordion_panel(
+        title = col,
+        value = paste0("binary_panel_", idx),
+        
+        # Shape selection
+        selectInput(
+          paste0("binary_shape_", col),
+          "Shape",
+          choices = symbol_names,
+          selected = current_binary_shape,
+          width = "200px"
+        ),
+        
+        # Color selection
+        colourInput(
+          paste0("binary_color_", col),
+          "Color",
+          value = current_binary_color,
+          showColour = "both",
+          palette = "square",
+          returnName = FALSE
+        ),
+        
+        # Filled/empty option
+        checkboxInput(
+          paste0("binary_filled_", col),
+          "Show only filled shapes (hide empty shapes)",
+          value = current_binary_filled
+        ),
+        
+        tags$hr(),
+        
+        # Value selection mode
+        radioButtons(
+          paste0("binary_mode_", col),
+          "Value Selection Mode",
+          choices = c(
+            "Include specific values (show presence)" = "include",
+            "Exclude specific values (show absence)" = "exclude",
+            "All values as separate fields" = "all"
+          ),
+          selected = isolate(input[[paste0("binary_mode_", col)]]) %||% "all"
+        ),
+        
+        # Value selection (conditional)
+        conditionalPanel(
+          condition = sprintf("input['binary_mode_%s'] != 'all'", col),
+          checkboxGroupInput(
+            paste0("binary_values_", col),
+            "Select Values",
+            choices = col_values,
+            selected = isolate(input[[paste0("binary_values_", col)]]) %||% col_values[1]
+          )
+        )
+      )
+    })
+    
+    # Return accordion
+    accordion(
+      id = "binary_accordion",
+      multiple = TRUE,
+      !!!accordion_items
+    )
+  })
   
+  # ---- Generate binary outputs ----
+  binary_outputs <- reactive({
+    req(data(), input$id_col, input$data_cols)
+    
+    df <- data()
+    output_list <- list()
+    
+    for(col in input$data_cols) {
+      col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
+      
+      # Get settings
+      binary_mode <- input[[paste0("binary_mode_", col)]]
+      binary_shape <- input[[paste0("binary_shape_", col)]]
+      binary_color <- input[[paste0("binary_color_", col)]]
+      binary_filled <- input[[paste0("binary_filled_", col)]]
+      selected_values <- input[[paste0("binary_values_", col)]]
+      
+      if(is.null(binary_mode)) binary_mode <- "all"
+      if(is.null(binary_shape)) binary_shape <- 2
+      if(is.null(binary_color)) binary_color <- "#3498DB"
+      if(is.null(binary_filled)) binary_filled <- FALSE
+      if(is.null(selected_values) && binary_mode != "all") selected_values <- col_values[1]
+      
+      # Determine which values to include
+      if(binary_mode == "all") {
+        fields <- col_values
+      } else if(binary_mode == "include") {
+        fields <- selected_values
+      } else {  # exclude
+        fields <- setdiff(col_values, selected_values)
+      }
+      
+      # Build iTOL DATASET_BINARY format
+      content <- c("DATASET_BINARY")
+      content <- c(content, "SEPARATOR TAB")
+      content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col, "binary"), sep = "\t"))
+      content <- c(content, paste("COLOR", binary_color, sep = "\t"))
+      content <- c(content, "")
+      
+      # Field configuration
+      field_shapes <- rep(binary_shape, length(fields))
+      content <- c(content, paste("FIELD_SHAPES", paste(field_shapes, collapse = "\t"), sep = "\t"))
+      content <- c(content, paste("FIELD_LABELS", paste(fields, collapse = "\t"), sep = "\t"))
+      
+      # Field colors (one per field)
+      field_colors <- rep(binary_color, length(fields))
+      content <- c(content, paste("FIELD_COLORS", paste(field_colors, collapse = "\t"), sep = "\t"))
+      
+      content <- c(content, "")
+      
+      # Legend
+      content <- c(content, paste("LEGEND_TITLE", col, sep = "\t"))
+      content <- c(content, paste("LEGEND_SHAPES", paste(field_shapes, collapse = "\t"), sep = "\t"))
+      content <- c(content, paste("LEGEND_COLORS", paste(field_colors, collapse = "\t"), sep = "\t"))
+      content <- c(content, paste("LEGEND_LABELS", paste(fields, collapse = "\t"), sep = "\t"))
+      
+      content <- c(content, "")
+      content <- c(content, "DATA")
+      
+      # Data: ID followed by binary values (1, 0, or -1)
+      for(i in 1:nrow(df)) {
+        id <- as.character(df[[input$id_col]][i])
+        val <- standardize_value(df[[col]][i])
+        
+        # Create binary vector
+        binary_vec <- sapply(fields, function(field) {
+          if(val == field) {
+            return(1)  # Filled shape
+          } else if(binary_filled) {
+            return(-1)  # Omit shape
+          } else {
+            return(0)  # Empty shape
+          }
+        })
+        
+        content <- c(content, paste(c(id, binary_vec), collapse = "\t"))
+      }
+      
+      output_list[[col]] <- paste(content, collapse = "\n")
+    }
+    
+    return(output_list)
+  })
+  
+  # ---- Binary download card ----
+  output$binary_download_card <- renderUI({
+    req(binary_outputs())
+    content_list <- binary_outputs()
+    
+    card(
+      card_header("Download Binary Annotations"),
+      card_body(
+        if(length(content_list) == 1) {
+          downloadButton(
+            "download_binary_single", 
+            "Download Binary File",
+            class = "btn-success w-100",
+            icon = icon("download")
+          )
+        } else {
+          tagList(
+            downloadButton(
+              "download_binary_zip",
+              "Download All Binary Files (ZIP)",
+              class = "btn-success w-100",
+              icon = icon("file-zipper")
+            ),
+            tags$br(),
+            tags$br(),
+            div(class = "help-text",
+                "Or download each annotation file separately:"),
+            tags$br(),
+            lapply(names(content_list), function(name) {
+              tags$div(
+                style = "margin-bottom: 0.5rem;",
+                downloadButton(
+                  paste0("download_binary_", safe_id(name)),
+                  label = paste0(name, "_binary.txt"),
+                  class = "btn-primary w-100 btn-sm",
+                  icon = icon("download")
+                )
+              )
+            })
+          )
+        }
+      )
+    )
+  })
+
   # ---- Generate metadata output ----
   metadata_output <- reactive({
     req(data(), input$id_col, input$data_cols)
@@ -1012,8 +1246,70 @@ server <- function(input, output, session) {
       })
     }
   })
+
+
+    # Single binary file
+  output$download_binary_single <- downloadHandler(
+    filename = function() {
+      paste0(input$dataset_label, "_binary.txt")
+    },
+    content = function(file) {
+      content_list <- binary_outputs()
+      writeLines(content_list[[1]], file)
+    }
+  )
   
-    # Metadata download
+  # All binary files as ZIP
+  output$download_binary_zip <- downloadHandler(
+    filename = function() {
+      paste0(input$dataset_label, "_binary_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip")
+    },
+    content = function(file) {
+      content_list <- binary_outputs()
+      temp_dir <- tempdir()
+      temp_files <- c()
+      
+      for(name in names(content_list)) {
+        temp_file <- file.path(temp_dir, paste0(name, "_binary.txt"))
+        writeLines(content_list[[name]], temp_file)
+        temp_files <- c(temp_files, temp_file)
+      }
+      
+      zip::zip(
+        zipfile = file,
+        files = basename(temp_files),
+        root = temp_dir,
+        mode = "cherry-pick"
+      )
+      
+      unlink(temp_files)
+    }
+  )
+  
+  # Individual binary files
+  observe({
+    req(binary_outputs())
+    content_list <- binary_outputs()
+    
+    if(length(content_list) > 1) {
+      lapply(names(content_list), function(name) {
+        local({
+          my_name <- name
+          output[[paste0("download_binary_", safe_id(my_name))]] <- downloadHandler(
+            filename = function() {
+              paste0(my_name, "_binary.txt")
+            },
+            content = function(file) {
+              writeLines(content_list[[my_name]], file)
+            }
+          )
+        })
+      })
+    }
+  })
+      
+      
+  # Metadata download
   output$download_metadata <- downloadHandler(
     filename = function() {
       "metadata.txt"
