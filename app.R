@@ -806,6 +806,8 @@ server <- function(input, output, session) {
       content <- c(content, "")
       content <- c(content, paste("MAXIMUM_SIZE", input$max_size, sep = "\t"))
       content <- c(content, "")
+      content <- c(content, "SHOW_LABELS\t1")
+      content <- c(content, "")
       content <- c(content, "DATA")
       
       # Data format: ID, symbol, size, color, fill, position
@@ -1009,7 +1011,8 @@ server <- function(input, output, session) {
       content <- c(content, paste("LEGEND_SHAPES", paste(field_shapes, collapse = "\t"), sep = "\t"))
       content <- c(content, paste("LEGEND_COLORS", paste(field_colors, collapse = "\t"), sep = "\t"))
       content <- c(content, paste("LEGEND_LABELS", paste(fields, collapse = "\t"), sep = "\t"))
-      
+      content <- c(content, "")
+      content <- c(content, "SHOW_LABELS\t1")
       content <- c(content, "")
       content <- c(content, "DATA")
       
