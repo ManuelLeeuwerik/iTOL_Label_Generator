@@ -353,26 +353,6 @@ ui <- page_sidebar(
               p(icon("info-circle"), "Configure colors and symbols for each metadata column.")
           ),
           
-          # Symbol size configuration
-          div(
-            style = "margin-bottom: 1rem; padding: 0.75rem; background-color: #f8f9fa; border-radius: 0.25rem; border: 1px solid #dee2e6;",
-            tags$label(
-              style = "font-weight: 500; color: #2C5F8D; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;",
-              "Symbol Size"
-            ),
-            numericInput(
-              "max_size",
-              NULL,
-              value = 5,
-              min = 1,
-              max = 50,
-              step = 1,
-              width = "150px"
-            ),
-            div(class = "help-text",
-                style = "margin-top: 0.25rem;",
-                "Maximum size for symbols in iTOL")
-          ),
           
           # Column-specific settings
           uiOutput("symbol_column_settings_ui"),
@@ -409,6 +389,25 @@ ui <- page_sidebar(
           
           # Download section for binary
           uiOutput("binary_download_card")
+        )
+      ),
+      
+      # Simple Bar Chart tab
+      nav_panel(
+        "Simple Bar Chart",
+        icon = icon("chart-bar"),
+        card_body(
+          div(class = "info-box",
+              p(icon("info-circle"), "Generate DATASET_SIMPLEBAR annotations. Display numeric values as bars outside the tree.")
+          ),
+          
+          # Bar chart configuration
+          uiOutput("bar_column_settings_ui"),
+          
+          tags$hr(),
+          
+          # Download section for bar charts
+          uiOutput("bar_download_card")
         )
       ),
       
@@ -813,8 +812,6 @@ server <- function(input, output, session) {
       content <- c(content, paste("LEGEND_COLORS", paste(color_map, collapse = "\t"), sep = "\t"))
       content <- c(content, paste("LEGEND_LABELS", paste(names(color_map), collapse = "\t"), sep = "\t"))
       content <- c(content, "")
-      content <- c(content, paste("MAXIMUM_SIZE", input$max_size, sep = "\t"))
-      content <- c(content, "")
       content <- c(content, "SHOW_LABELS\t1")
       content <- c(content, "")
       content <- c(content, "DATA")
@@ -826,8 +823,8 @@ server <- function(input, output, session) {
         symbol <- symbol_map[val]
         color <- color_map[val]
         fill_value <- if(symbol_filled) "1" else "0"
-        content <- c(content, paste(id, symbol, input$max_size, color, fill_value, "-1", sep = "\t"))
-      }
+        content <- c(content, paste(id, symbol, "1", color, fill_value, "-1", val, sep = "\t"))
+        }
       
       output_list[[col]] <- paste(content, collapse = "\n")
     }
@@ -965,7 +962,7 @@ server <- function(input, output, session) {
       !!!accordion_items
     )
   })
-  
+
   # ---- Generate binary outputs ----
   binary_outputs <- reactive({
     req(data(), input$id_col, input$data_cols)
@@ -1085,6 +1082,183 @@ server <- function(input, output, session) {
                 downloadButton(
                   paste0("download_binary_", safe_id(name)),
                   label = paste0(name, "_binary.txt"),
+                  class = "btn-primary w-100 btn-sm",
+                  icon = icon("download")
+                )
+              )
+            })
+          )
+        }
+      )
+    )
+  })
+
+
+
+    # ---- Bar chart tab: Column settings UI ----
+  output$bar_column_settings_ui <- renderUI({
+    req(input$data_cols)
+    
+    df <- isolate(data())
+    
+    # Filter to only numeric columns
+    numeric_cols <- input$data_cols[sapply(input$data_cols, function(col) {
+      is.numeric(df[[col]])
+    })]
+    
+    if(length(numeric_cols) == 0) {
+      return(
+        div(
+          class = "info-box",
+          style = "background-color: #fff3cd; border-left-color: #ffc107;",
+          p(icon("exclamation-triangle"), "No numeric columns selected. Please select at least one numeric column to generate bar charts.")
+        )
+      )
+    }
+    
+    # Create accordion for each numeric column
+    accordion_items <- lapply(seq_along(numeric_cols), function(idx) {
+      col <- numeric_cols[idx]
+      
+      # Get current settings
+      current_bar_color <- isolate(input[[paste0("bar_color_", col)]])
+      
+      if(is.null(current_bar_color)) current_bar_color <- "#2C5F8D"
+      
+      # Create accordion item
+      accordion_panel(
+        title = col,
+        value = paste0("bar_panel_", idx),
+        
+        # Color selection
+        colourInput(
+          paste0("bar_color_", col),
+          "Bar Color",
+          value = current_bar_color,
+          showColour = "both",
+          palette = "square",
+          returnName = FALSE
+        ),
+        
+        # Scale lines configuration
+        textInput(
+          paste0("bar_scale_", col),
+          "Scale Lines (comma-separated values)",
+          value = isolate(input[[paste0("bar_scale_", col)]]) %||% "",
+          placeholder = "e.g., 10,50,100"
+        ),
+        
+        div(class = "help-text",
+            "Optional: Specify values where scale lines will be drawn")
+      )
+    })
+    
+    # Return accordion
+    accordion(
+      id = "bar_accordion",
+      multiple = TRUE,
+      !!!accordion_items
+    )
+  })
+
+      # ---- Generate bar chart outputs ----
+  bar_outputs <- reactive({
+    req(data(), input$id_col, input$data_cols)
+    
+    df <- data()
+    output_list <- list()
+    
+    # Filter to only numeric columns
+    numeric_cols <- input$data_cols[sapply(input$data_cols, function(col) {
+      is.numeric(df[[col]])
+    })]
+    
+    if(length(numeric_cols) == 0) return(NULL)
+    
+    for(col in numeric_cols) {
+      # Get settings
+      bar_color <- input[[paste0("bar_color_", col)]]
+      bar_scale <- input[[paste0("bar_scale_", col)]]
+      
+      if(is.null(bar_color)) bar_color <- "#2C5F8D"
+      if(is.null(bar_scale)) bar_scale <- ""
+      
+      # Build iTOL DATASET_SIMPLEBAR format
+      content <- c("DATASET_SIMPLEBAR")
+      content <- c(content, "SEPARATOR TAB")
+      content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col), sep = "\t"))
+      content <- c(content, paste("COLOR", bar_color, sep = "\t"))
+      content <- c(content, "")
+      
+      # Add scale lines if specified
+      if(bar_scale != "" && !is.na(bar_scale)) {
+        content <- c(content, paste("DATASET_SCALE", bar_scale, sep = "\t"))
+      }
+      
+      content <- c(content, "")
+      content <- c(content, "SHOW_LABELS\t1")
+      content <- c(content, "")
+      content <- c(content, "DATA")
+      
+      # Data: ID followed by numeric value
+      # Filter out NA/NULL/Unknown values
+      for(i in 1:nrow(df)) {
+        id <- as.character(df[[input$id_col]][i])
+        val <- df[[col]][i]
+        
+        # Only include valid numeric values (not NA, NULL, or non-numeric)
+        # Skip if value is NA, NULL, or would become "Unknown" after standardization
+        if(!is.na(val) && !is.null(val) && is.numeric(val)) {
+          # Also skip if the original value would be standardized to "Unknown"
+          original_val <- as.character(df[[col]][i])
+          if(standardize_value(original_val) != "Unknown") {
+            content <- c(content, paste(id, val, sep = "\t"))
+          }
+        }
+      }
+      
+      output_list[[col]] <- paste(content, collapse = "\n")
+    }
+    
+    return(output_list)
+  })
+
+    # ---- Bar chart download card ----
+  output$bar_download_card <- renderUI({
+    req(bar_outputs())
+    content_list <- bar_outputs()
+    
+    if(length(content_list) == 0) return(NULL)
+    
+    card(
+      card_header("Download Bar Chart Annotations"),
+      card_body(
+        if(length(content_list) == 1) {
+          downloadButton(
+            "download_bar_single", 
+            "Download Bar Chart File",
+            class = "btn-success w-100",
+            icon = icon("download")
+          )
+        } else {
+          tagList(
+            downloadButton(
+              "download_bar_zip",
+              "Download All Bar Chart Files (ZIP)",
+              class = "btn-success w-100",
+              icon = icon("file-zipper")
+            ),
+            tags$br(),
+            tags$br(),
+            div(class = "help-text",
+                "Or download each annotation file separately:"),
+            tags$br(),
+            lapply(names(content_list), function(name) {
+              tags$div(
+                style = "margin-bottom: 0.5rem;",
+                downloadButton(
+                  paste0("download_bar_", safe_id(name)),
+                  label = paste0(name, "_bar.txt"),
                   class = "btn-primary w-100 btn-sm",
                   icon = icon("download")
                 )
@@ -1320,7 +1494,66 @@ server <- function(input, output, session) {
       })
     }
   })
+
+    # Single bar chart file
+  output$download_bar_single <- downloadHandler(
+    filename = function() {
+      paste0(input$dataset_label, "_bar.txt")
+    },
+    content = function(file) {
+      content_list <- bar_outputs()
+      writeLines(content_list[[1]], file)
+    }
+  )
+  
+  # All bar chart files as ZIP
+  output$download_bar_zip <- downloadHandler(
+    filename = function() {
+      paste0(input$dataset_label, "_bar_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip")
+    },
+    content = function(file) {
+      content_list <- bar_outputs()
+      temp_dir <- tempdir()
+      temp_files <- c()
       
+      for(name in names(content_list)) {
+        temp_file <- file.path(temp_dir, paste0(name, "_bar.txt"))
+        writeLines(content_list[[name]], temp_file)
+        temp_files <- c(temp_files, temp_file)
+      }
+      
+      zip::zip(
+        zipfile = file,
+        files = basename(temp_files),
+        root = temp_dir,
+        mode = "cherry-pick"
+      )
+      
+      unlink(temp_files)
+    }
+  )
+  
+  # Individual bar chart files
+  observe({
+    req(bar_outputs())
+    content_list <- bar_outputs()
+    
+    if(length(content_list) > 1) {
+      lapply(names(content_list), function(name) {
+        local({
+          my_name <- name
+          output[[paste0("download_bar_", safe_id(my_name))]] <- downloadHandler(
+            filename = function() {
+              paste0(my_name, "_bar.txt")
+            },
+            content = function(file) {
+              writeLines(content_list[[my_name]], file)
+            }
+          )
+        })
+      })
+    }
+  })
       
   # Metadata download
   output$download_metadata <- downloadHandler(
