@@ -338,7 +338,7 @@ ui <- page_sidebar(
         icon = icon("table"),
         card_body(
           div(class = "info-box",
-              p("Preview your uploaded data. Verify that all columns are correctly loaded.")
+              p(icon("info-circle"), "Preview your uploaded data. Verify that all columns are correctly loaded.")
           ),
           DTOutput("table")
         )
@@ -350,7 +350,7 @@ ui <- page_sidebar(
         icon = icon("shapes"),
         card_body(
           div(class = "info-box",
-              p("Configure colors and symbols for each metadata column.")
+              p(icon("info-circle"), "Configure colors and symbols for each metadata column.")
           ),
           
           # Symbol size configuration
@@ -399,7 +399,7 @@ ui <- page_sidebar(
         icon = icon("chart-simple"),
         card_body(
           div(class = "info-box",
-              p("Generate DATASET_BINARY annotations. Configure binary presence/absence patterns for each metadata column.")
+              p(icon("info-circle"), "Generate DATASET_BINARY annotations. Configure binary presence/absence patterns for each metadata column.")
           ),
           
           # Binary configuration
@@ -434,7 +434,7 @@ ui <- page_sidebar(
       # Change Labels tab
       nav_panel(
         "Change Labels",
-        icon = icon("tag"),
+        icon = icon("tags"),
         card_body(
           div(class = "info-box",
               p(icon("info-circle"), " Replace tree labels with new values from your data.")
