@@ -1,0 +1,21 @@
+name: rshiny
+channels:
+  - conda-forge
+  - bioconda
+  - b-brankovics
+  - defaults
+dependencies:
+  - r::r-shiny
+  - r::r-readr
+  - r::r-readxl
+  - r::r-dt
+  - r::r-rsconnect
+  - r::r-tidyverse
+  - r::r-scales
+  - conda-forge::r-colourpicker
+  - conda-forge::zip
+  - conda-forge::r-r.utils
+  - r-shinywidgets
+  - ca-certificates
+  - openssl
+  - r-zip

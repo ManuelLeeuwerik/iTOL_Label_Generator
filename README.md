@@ -1,27 +1,21 @@
 # Goal
-Automate label generation for iTOL. 
+Automate label generation for iTOL, instead of writing or changing scripts (see example below).
 
-Currently all seperate scripts to generate files for iTOL. 
 
-So make an UI with Rshiny
+Activate the conda environment and run the app.
 
-Input:
-- tsv
-- csv
-- txt
-- excel (xlsx)
+**Conda:**
 
-User functions:
-- Select wanted colors and symbols for each column and unqiue value or all values (So X yellow Y red or column B yellow etc)
-- Appointing ID column coresponding with tree tips
-- Be able to switch ID labels on tree tips with another column
-- Option to define ranges etc.
-- Present abscense possibilities.
+```bash
+conda env create -f rshiny.yaml
+conda activate rshiny 
+```
 
-Ouput:
-- Folder with text files which users can drag and drop in iTOL
-- Each outer track should be a different text file, iTOL handles this properly
+To **run** Rshiny app:
 
+```bash
+Rscript run_app.R 
+```
 
 Example previous script:
 
@@ -49,7 +43,7 @@ coalesce_joined <- function(df) {
 }
 
 # === Load and trim isolate data ===
-metadata_df <- read_tsv("/data/users/m.leeuwerik/2024-latasp/analysis/redcap_analysis/dup_isolates_to_delete.tsv") 
+metadata_df <- read_tsv("/metadata") 
 
 # === Generate iTOL SYMBOL DATASET for LATASPID ===
 # Assign colors to unique countries
@@ -109,25 +103,3 @@ message("iTOL SYMBOL dataset for Country written to ", file.path("itol_LATASPID_
 message("iTOL SYMBOL dataset written to ", file.path("itol_resistance_source_symbols.txt"))
 message("iTOL LABELS dataset written to ", file.path("itol_labels.txt"))
 ```
-
-Conda env needed
-
-conda activate rshiny 
-
-Create installation and dependency step with YAML.
-
-Open port on local machine:
-```bash
-mleeuwerik@DSK-MEYE-003:~$ ssh -L 8000:localhost:8000 m.leeuwerik@srv-lnx-meye1
-```
-
-To run Rshiny app Rscript run_app.R 
-
-**To do**
-- Make a readme in the app and how to use the app. Fix previews.
-- Maybe add tutorial on how to use it in shiny app 
-- Split app in server and UI (text, functions etc.)
-- Add option to filter for colorblind etc in ColorBrewer palettes.
-- Utilizing more iTOL functions.
-- Look into Rshiny live (https://posit-dev.github.io/r-shinylive/)
-- Have to order numeric data disregarding Unknown for the color palletes that go up (make a check box for numeric/range data or something)
