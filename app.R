@@ -1190,9 +1190,12 @@ server <- function(input, output, session) {
       content <- c(content, paste("COLOR", bar_color, sep = "\t"))
       content <- c(content, "")
       
-      # Add scale lines if specified
+      # Add scale lines if specified (convert comma-separated to tab-separated)
       if(bar_scale != "" && !is.na(bar_scale)) {
-        content <- c(content, paste("DATASET_SCALE", bar_scale, sep = "\t"))
+        # Split by comma, trim whitespace, and rejoin with tabs
+        scale_values <- trimws(unlist(strsplit(bar_scale, ",")))
+        scale_line <- paste(scale_values, collapse = "\t")
+        content <- c(content, paste("DATASET_SCALE", scale_line, sep = "\t"))
       }
       
       content <- c(content, "")
