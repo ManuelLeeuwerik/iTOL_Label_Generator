@@ -1149,8 +1149,54 @@ server <- function(input, output, session) {
         ),
         
         div(class = "help-text",
-            "Optional: Specify values where scale lines will be drawn")
-      )
+            "Optional: Specify values where scale lines will be drawn"),
+        
+        tags$br(),
+        
+        # Show values checkbox
+        checkboxInput(
+          paste0("bar_show_value_", col),
+          "Show values on bars",
+          value = isolate(input[[paste0("bar_show_value_", col)]]) %||% TRUE
+        ),
+        
+        # Value label settings (only show if show_value is checked)
+        conditionalPanel(
+          condition = paste0("input.bar_show_value_", col),
+          selectInput(
+            paste0("bar_value_position_", col),
+            "Value Label Position",
+            choices = c(
+              "Outside Right" = "outside-right",
+              "Outside Left" = "outside-left", 
+              "Left" = "left",
+              "Center" = "center",
+              "Right" = "right",
+              "Dataset Center" = "dataset-center"
+            ),
+            selected = isolate(input[[paste0("bar_value_position_", col)]]) %||% "outside-right"
+          ),
+          
+          checkboxInput(
+            paste0("bar_auto_color_", col),
+            "Automatic label color (white/black based on bar darkness)",
+            value = isolate(input[[paste0("bar_auto_color_", col)]]) %||% TRUE
+          ),
+          
+          # Only show manual color picker if auto color is OFF
+          conditionalPanel(
+            condition = paste0("!input.bar_auto_color_", col),
+            colourInput(
+              paste0("bar_label_color_", col),
+              "Value Label Color",
+              value = isolate(input[[paste0("bar_label_color_", col)]]) %||% "#000000",
+              showColour = "both",
+              palette = "square",
+              returnName = FALSE
+            )
+          )
+          )
+        )
     })
     
     # Return accordion
@@ -1200,6 +1246,39 @@ server <- function(input, output, session) {
       
       content <- c(content, "")
       content <- c(content, "SHOW_LABELS\t1")
+      
+      # Show value settings
+      bar_show_value <- input[[paste0("bar_show_value_", col)]]
+      if(is.null(bar_show_value)) bar_show_value <- TRUE
+      
+      if(bar_show_value) {
+        content <- c(content, "SHOW_VALUE\t1")
+        
+        # Value position
+        bar_value_position <- input[[paste0("bar_value_position_", col)]]
+        if(!is.null(bar_value_position)) {
+          content <- c(content, paste("LABEL_POSITION", bar_value_position, sep = "\t"))
+        }
+        
+        # Auto color or manual color
+        bar_auto_color <- input[[paste0("bar_auto_color_", col)]]
+        if(is.null(bar_auto_color)) bar_auto_color <- TRUE
+        
+        if(bar_auto_color) {
+          content <- c(content, "LABEL_AUTO_COLOR\t1")
+        } else {
+          content <- c(content, "LABEL_AUTO_COLOR\t0")
+          # Manual color
+          bar_label_color <- input[[paste0("bar_label_color_", col)]]
+          if(!is.null(bar_label_color)) {
+            content <- c(content, paste("BAR_LABEL_COLOR", bar_label_color, sep = "\t"))
+          }
+        }
+      } else {
+        content <- c(content, "SHOW_VALUE\t0")
+      }
+    
+      content <- c(content, "")
       content <- c(content, "")
       content <- c(content, "DATA")
       
