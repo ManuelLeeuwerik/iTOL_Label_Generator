@@ -742,7 +742,7 @@ server <- function(input, output, session) {
     display.brewer.all()
   }, res = 96)
   
-    # ---- Generate symbol outputs ----
+  # ---- Generate symbol outputs ----
   symbol_outputs <- reactive({
     req(data(), input$id_col, input$data_cols)
     
@@ -812,11 +812,21 @@ server <- function(input, output, session) {
       content <- c(content, paste("LEGEND_COLORS", paste(color_map, collapse = "\t"), sep = "\t"))
       content <- c(content, paste("LEGEND_LABELS", paste(names(color_map), collapse = "\t"), sep = "\t"))
       content <- c(content, "")
+      
+      # Set maximum symbol size
+      content <- c(content, "MAXIMUM_SIZE\t5")
+      content <- c(content, "")
+
+      # Label settings to prevent size/position shifting
       content <- c(content, "SHOW_LABELS\t1")
+      content <- c(content, "LABEL_SIZE_FACTOR\t1")
+      content <- c(content, "LABEL_ROTATION\t0")
+      content <- c(content, "LABEL_SHIFT\t0")
       content <- c(content, "")
       content <- c(content, "DATA")
       
-      # Data format: ID, symbol, size, color, fill, position
+      # Data format: ID, symbol, size, color, fill, position, label
+      # Use uniform size of 10 for all symbols (iTOL will scale based on MAXIMUM_SIZE)
       for(i in 1:nrow(df)) {
         id <- as.character(df[[input$id_col]][i])
         val <- standardize_value(df[[col]][i])
@@ -824,7 +834,7 @@ server <- function(input, output, session) {
         color <- color_map[val]
         fill_value <- if(symbol_filled) "1" else "0"
         content <- c(content, paste(id, symbol, "1", color, fill_value, "-1", val, sep = "\t"))
-        }
+      }
       
       output_list[[col]] <- paste(content, collapse = "\n")
     }
@@ -1019,6 +1029,12 @@ server <- function(input, output, session) {
       content <- c(content, paste("LEGEND_COLORS", paste(field_colors, collapse = "\t"), sep = "\t"))
       content <- c(content, paste("LEGEND_LABELS", paste(fields, collapse = "\t"), sep = "\t"))
       content <- c(content, "")
+      
+      # Grid settings - disable both
+      content <- c(content, "HORIZONTAL_GRID\t0")
+      content <- c(content, "VERTICAL_GRID\t0")
+      content <- c(content, "")
+      
       content <- c(content, "SHOW_LABELS\t1")
       content <- c(content, "")
       content <- c(content, "DATA")
