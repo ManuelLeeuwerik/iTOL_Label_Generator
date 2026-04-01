@@ -491,11 +491,6 @@ server <- function(input, output, session) {
         stop("Unsupported file format")
       }
     }, error = function(e) {
-      showNotification(
-        paste("Error loading file:", e$message),
-        type = "error",
-        duration = 5
-      )
       NULL
     })
   })
