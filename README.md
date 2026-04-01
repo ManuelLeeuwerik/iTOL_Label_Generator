@@ -17,6 +17,11 @@ To **run** Rshiny app:
 Rscript run_app.R 
 ```
 
+**Note:**
+- If the input table contains samples that are not present in the tree, their values may still be included when generating the dataset. This can result in legend entries for categories that are not visible on the tree.
+- Symbol sizes in DATASET_SYMBOL datasets appear different when switching between circular and rectangular tree layouts. This is due to how iTOL scales symbols. As a result, symbol sizes may need to be adjusted manually within the iTOL interface depending on the selected layout.
+
+
 Example previous script:
 
 ```R

@@ -31,13 +31,13 @@ symbol_names <- c(
   "Checkmark" = 6
 )
 
-#' Standardize NA-like values to "Unknown"
+#' Standardize NA-like values to NA
 standardize_value <- function(x) {
-  if (is.na(x) || is.null(x)) return("Unknown")
+  if (is.na(x) || is.null(x)) return(NA_character_)
   x_char <- as.character(x)
-  if (x_char == "NA" || x_char == "N/A" || x_char == "unknown" || 
-      x_char == "" || grepl("^\\s+$", x_char)) {
-    return("Unknown")
+  # Only convert truly empty strings to NA, keep "NA" as literal "NA"
+  if (x_char == "" || grepl("^\\s+$", x_char)) {
+    return(NA_character_)
   }
   return(x_char)
 }
@@ -464,7 +464,7 @@ ui <- page_sidebar(
 
 server <- function(input, output, session) {
   
-  # ---- Load data ----
+  # ---- Data reactive with sheet selection ----
   data <- reactive({
     req(input$file)
     file <- input$file$datapath
@@ -476,7 +476,17 @@ server <- function(input, output, session) {
       } else if (ext == "csv") {
         read_csv(file, show_col_types = FALSE)
       } else if (ext == "xlsx") {
-        read_excel(file)
+        # Check number of sheets
+        sheets <- excel_sheets(file)
+        
+        if(length(sheets) > 1) {
+          # Multiple sheets - need selection
+          req(input$excel_sheet)
+          read_excel(file, sheet = input$excel_sheet)
+        } else {
+          # Single sheet - read directly
+          read_excel(file)
+        }
       } else {
         stop("Unsupported file format")
       }
@@ -488,6 +498,57 @@ server <- function(input, output, session) {
       )
       NULL
     })
+  })
+
+  # ---- Reactive to detect Excel sheets ----
+  excel_sheets_list <- reactive({
+    req(input$file)
+    ext <- tools::file_ext(input$file$name)
+    
+    if(ext == "xlsx") {
+      sheets <- excel_sheets(input$file$datapath)
+      if(length(sheets) > 1) {
+        return(sheets)
+      }
+    }
+    return(NULL)
+  })
+
+  # ---- Show modal for sheet selection ----
+  observeEvent(excel_sheets_list(), {
+    sheets <- excel_sheets_list()
+    
+    if(!is.null(sheets)) {
+      showModal(
+        modalDialog(
+          title = "Select Excel Sheet",
+          size = "m",
+          easyClose = FALSE,
+          
+          div(
+            class = "info-box",
+            p(icon("info-circle"), 
+              "This Excel file contains multiple sheets. Please select which sheet to import.")
+          ),
+          
+          selectInput(
+            "excel_sheet",
+            "Choose a sheet:",
+            choices = sheets,
+            selected = sheets[1]
+          ),
+          
+          footer = tagList(
+            actionButton("confirm_sheet", "Load Sheet", class = "btn-success")
+          )
+        )
+      )
+    }
+  })
+
+  # ---- Close modal when sheet is confirmed ----
+  observeEvent(input$confirm_sheet, {
+    removeModal()
   })
   
   # ---- Data preview table ----
@@ -1117,10 +1178,31 @@ server <- function(input, output, session) {
     
     df <- isolate(data())
     
-    # Filter to only numeric columns
-    numeric_cols <- input$data_cols[sapply(input$data_cols, function(col) {
-      is.numeric(df[[col]])
-    })]
+    # Filter to numeric or convertible-to-numeric columns
+    numeric_cols <- c()
+    na_counts <- list()
+    
+    for(col in input$data_cols) {
+      col_data <- df[[col]]
+      
+      # Check if already numeric
+      if(is.numeric(col_data)) {
+        numeric_cols <- c(numeric_cols, col)
+        na_counts[[col]] <- sum(is.na(col_data))
+      } else {
+        # Try to convert to numeric
+        converted <- suppressWarnings(as.numeric(col_data))
+        
+        # Count how many values successfully converted (non-NA after conversion)
+        non_na_count <- sum(!is.na(converted))
+        
+        # If at least one value converts successfully, consider it numeric
+        if(non_na_count > 0) {
+          numeric_cols <- c(numeric_cols, col)
+          na_counts[[col]] <- sum(is.na(converted))
+        }
+      }
+    }
     
     if(length(numeric_cols) == 0) {
       return(
@@ -1130,6 +1212,22 @@ server <- function(input, output, session) {
           p(icon("exclamation-triangle"), "No numeric columns selected. Please select at least one numeric column to generate bar charts.")
         )
       )
+    }
+    
+    # Show info about NA filtering if any columns have NAs
+    info_messages <- tagList()
+    for(col in numeric_cols) {
+      if(na_counts[[col]] > 0) {
+        info_messages <- tagList(
+          info_messages,
+          div(
+            class = "help-text",
+            style = "color: #856404; margin-bottom: 0.5rem;",
+            icon("info-circle"),
+            sprintf(" Column '%s': %d NA/non-numeric value(s) will be filtered out", col, na_counts[[col]])
+          )
+        )
+      }
     }
     
     # Create accordion for each numeric column
@@ -1211,29 +1309,51 @@ server <- function(input, output, session) {
               returnName = FALSE
             )
           )
-          )
         )
+      )
     })
     
-    # Return accordion
-    accordion(
-      id = "bar_accordion",
-      multiple = TRUE,
-      !!!accordion_items
+    # Return accordion with NA info
+    tagList(
+      if(length(info_messages) > 0) {
+        div(
+          class = "info-box",
+          style = "background-color: #fff3cd; border-left-color: #ffc107; margin-bottom: 1rem;",
+          p(tags$strong("Value Filtering:")),
+          info_messages
+        )
+      },
+      accordion(
+        id = "bar_accordion",
+        multiple = TRUE,
+        !!!accordion_items
+      )
     )
   })
 
-      # ---- Generate bar chart outputs ----
+  # ---- Generate bar chart outputs ----
   bar_outputs <- reactive({
     req(data(), input$id_col, input$data_cols)
     
     df <- data()
     output_list <- list()
     
-    # Filter to only numeric columns
-    numeric_cols <- input$data_cols[sapply(input$data_cols, function(col) {
-      is.numeric(df[[col]])
-    })]
+    # Filter to numeric or convertible-to-numeric columns
+    numeric_cols <- c()
+    for(col in input$data_cols) {
+      col_data <- df[[col]]
+      
+      if(is.numeric(col_data)) {
+        numeric_cols <- c(numeric_cols, col)
+      } else {
+        # Try to convert to numeric
+        converted <- suppressWarnings(as.numeric(col_data))
+        # If at least one value converts, include it
+        if(sum(!is.na(converted)) > 0) {
+          numeric_cols <- c(numeric_cols, col)
+        }
+      }
+    }
     
     if(length(numeric_cols) == 0) return(NULL)
     
@@ -1254,7 +1374,6 @@ server <- function(input, output, session) {
       
       # Add scale lines if specified (convert comma-separated to tab-separated)
       if(bar_scale != "" && !is.na(bar_scale)) {
-        # Split by comma, trim whitespace, and rejoin with tabs
         scale_values <- trimws(unlist(strsplit(bar_scale, ",")))
         scale_line <- paste(scale_values, collapse = "\t")
         content <- c(content, paste("DATASET_SCALE", scale_line, sep = "\t"))
@@ -1270,13 +1389,11 @@ server <- function(input, output, session) {
       if(bar_show_value) {
         content <- c(content, "SHOW_VALUE\t1")
         
-        # Value position
         bar_value_position <- input[[paste0("bar_value_position_", col)]]
         if(!is.null(bar_value_position)) {
           content <- c(content, paste("LABEL_POSITION", bar_value_position, sep = "\t"))
         }
         
-        # Auto color or manual color
         bar_auto_color <- input[[paste0("bar_auto_color_", col)]]
         if(is.null(bar_auto_color)) bar_auto_color <- TRUE
         
@@ -1284,7 +1401,6 @@ server <- function(input, output, session) {
           content <- c(content, "LABEL_AUTO_COLOR\t1")
         } else {
           content <- c(content, "LABEL_AUTO_COLOR\t0")
-          # Manual color
           bar_label_color <- input[[paste0("bar_label_color_", col)]]
           if(!is.null(bar_label_color)) {
             content <- c(content, paste("BAR_LABEL_COLOR", bar_label_color, sep = "\t"))
@@ -1298,21 +1414,31 @@ server <- function(input, output, session) {
       content <- c(content, "")
       content <- c(content, "DATA")
       
-      # Data: ID followed by numeric value
-      # Filter out NA/NULL/Unknown values
+      # Get column data and convert to numeric if needed
+      col_data <- df[[col]]
+      if(!is.numeric(col_data)) {
+        col_data <- suppressWarnings(as.numeric(col_data))
+      }
+      
+      # Count filtered values
+      na_count <- 0
+      
+      # Data: ID followed by numeric value - only include valid numerics
       for(i in 1:nrow(df)) {
         id <- as.character(df[[input$id_col]][i])
-        val <- df[[col]][i]
+        val <- col_data[i]
         
-        # Only include valid numeric values (not NA, NULL, or non-numeric)
-        # Skip if value is NA, NULL, or would become "Unknown" after standardization
-        if(!is.na(val) && !is.null(val) && is.numeric(val)) {
-          # Also skip if the original value would be standardized to "Unknown"
-          original_val <- as.character(df[[col]][i])
-          if(standardize_value(original_val) != "Unknown") {
-            content <- c(content, paste(id, val, sep = "\t"))
-          }
+        # Only include non-NA numeric values
+        if(!is.na(val)) {
+          content <- c(content, paste(id, val, sep = "\t"))
+        } else {
+          na_count <- na_count + 1
         }
+      }
+      
+      # Log filtered values
+      if(na_count > 0) {
+        message(sprintf("Column '%s': %d NA/non-numeric value(s) filtered from bar chart output", col, na_count))
       }
       
       output_list[[col]] <- paste(content, collapse = "\n")
