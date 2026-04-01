@@ -74,9 +74,9 @@ ui <- page_sidebar(
   
   # Custom CSS for enhanced academic styling
   tags$head(
-    tags$style(HTML("
+    tags$style(HTML('
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         color: #2c3e50;
         background-color: #e8f1f7;
       }
@@ -126,6 +126,32 @@ ui <- page_sidebar(
       .card-body {
         padding: 1rem;
         background-color: #ffffff;
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+      }
+    
+      .scrollable-tab-content {
+        max-height: calc(100vh - 250px);
+        overflow-y: auto;
+        padding-right: 0.5rem;
+      }
+    
+      .scrollable-tab-content::-webkit-scrollbar {
+        width: 8px;
+      }
+    
+      .scrollable-tab-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+    
+      .scrollable-tab-content::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+    
+      .scrollable-tab-content::-webkit-scrollbar-thumb:hover {
+        background: #555;
       }
       
       .info-box {
@@ -185,7 +211,12 @@ ui <- page_sidebar(
         border-color: #5DADE2;
         box-shadow: 0 0 0 0.2rem rgba(93, 173, 226, 0.25);
       }
-      
+  
+      .form-check-label, .checkbox label {
+        white-space: normal;
+        word-wrap: break-word;
+      }
+  
       .btn {
         font-weight: 500;
         font-size: 0.9rem;
@@ -213,7 +244,7 @@ ui <- page_sidebar(
         background-color: #2980b9;
         border-color: #2980b9;
       }
-
+  
       .nav-link {
         color: #7B8A8B;
         font-weight: 500;
@@ -230,7 +261,7 @@ ui <- page_sidebar(
       .nav-link:hover {
         color: #2C3E50;
       }
-
+  
       .radioGroupButtons .btn-group {
         display: inline-flex;
         gap: 0.25rem;
@@ -267,14 +298,14 @@ ui <- page_sidebar(
         background-color: #ffffff;
         border-top: 1px solid #dee2e6;
       }
-
+  
       hr {
         margin: 1rem 0;
         border-top: 1px solid #dee2e6;
       }
       
       pre {
-        font-family: 'Courier New', Courier, monospace;
+        font-family: "Courier New", Courier, monospace;
         font-size: 0.85rem;
         line-height: 1.5;
       }
@@ -288,9 +319,9 @@ ui <- page_sidebar(
         color: #2C3E50;
         font-size: 0.9rem;
       }
-    "))
+    '))
   ),
-  
+    
   # Application title
   title = "iTOL Label Generator",
   
@@ -337,10 +368,12 @@ ui <- page_sidebar(
         "Data Preview",
         icon = icon("table"),
         card_body(
-          div(class = "info-box",
-              p(icon("info-circle"), "Preview your uploaded data. Verify that all columns are correctly loaded.")
-          ),
-          DTOutput("table")
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), "Preview your uploaded data. Verify that all columns are correctly loaded.")
+            ),
+            DTOutput("table")
+          )
         )
       ),
       
@@ -349,27 +382,25 @@ ui <- page_sidebar(
         "Symbol Annotations",
         icon = icon("shapes"),
         card_body(
-          div(class = "info-box",
-              p(icon("info-circle"), "Configure colors and symbols for each metadata column.")
-          ),
-          
-          
-          # Column-specific settings
-          uiOutput("symbol_column_settings_ui"),
-          
-          # ColorBrewer reference (collapsible)
-          tags$details(
-            tags$summary(
-              style = "cursor: pointer; font-weight: 600; color: #2C5F8D; margin: 1rem 0 0.5rem 0;",
-              "View ColorBrewer Palette Reference"
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), "Configure colors and symbols for each metadata column.")
             ),
-            plotOutput("brewer_plot_symbol", height = "600px")
-          ),
-          
-          tags$hr(),
-          
-          # Download section for symbols
-          uiOutput("symbol_download_card")
+            
+            uiOutput("symbol_column_settings_ui"),
+            
+            tags$details(
+              tags$summary(
+                style = "cursor: pointer; font-weight: 600; color: #2C5F8D; margin: 1rem 0 0.5rem 0;",
+                "View ColorBrewer Palette Reference"
+              ),
+              plotOutput("brewer_plot_symbol", height = "600px")
+            ),
+            
+            tags$hr(),
+            
+            uiOutput("symbol_download_card")
+          )
         )
       ),
 
@@ -378,17 +409,17 @@ ui <- page_sidebar(
         "Binary Set",
         icon = icon("chart-simple"),
         card_body(
-          div(class = "info-box",
-              p(icon("info-circle"), "Generate DATASET_BINARY annotations. Configure binary presence/absence patterns for each metadata column.")
-          ),
-          
-          # Binary configuration
-          uiOutput("binary_column_settings_ui"),
-          
-          tags$hr(),
-          
-          # Download section for binary
-          uiOutput("binary_download_card")
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), "Generate DATASET_BINARY annotations. Configure binary presence/absence patterns for each metadata column.")
+            ),
+            
+            uiOutput("binary_column_settings_ui"),
+            
+            tags$hr(),
+            
+            uiOutput("binary_download_card")
+          )
         )
       ),
       
@@ -397,17 +428,36 @@ ui <- page_sidebar(
         "Simple Bar Chart",
         icon = icon("chart-bar"),
         card_body(
-          div(class = "info-box",
-              p(icon("info-circle"), "Generate DATASET_SIMPLEBAR annotations. Display numeric values as bars outside the tree.")
-          ),
-          
-          # Bar chart configuration
-          uiOutput("bar_column_settings_ui"),
-          
-          tags$hr(),
-          
-          # Download section for bar charts
-          uiOutput("bar_download_card")
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), "Generate DATASET_SIMPLEBAR annotations. Display numeric values as bars outside the tree.")
+            ),
+            
+            uiOutput("bar_column_settings_ui"),
+            
+            tags$hr(),
+            
+            uiOutput("bar_download_card")
+          )
+        )
+      ),
+
+      # Multi-Value Bar Chart tab
+      nav_panel(
+        "Multi-Value Bar Chart",
+        icon = icon("chart-column"),
+        card_body(
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), "Generate DATASET_MULTIBAR annotations. Display multiple numeric values as stacked or aligned bar charts.")
+            ),
+            
+            uiOutput("multibar_settings_ui"),
+            
+            tags$hr(),
+            
+            uiOutput("multibar_download_card")
+          )
         )
       ),
       
@@ -416,17 +466,17 @@ ui <- page_sidebar(
         "Metadata",
         icon = icon("database"),
         card_body(
-          div(class = "info-box",
-              p(icon("info-circle"), " Generate METADATA annotations. Selected columns will be included as multibar fields in iTOL.")
-          ),
-          
-          # Metadata preview
-          uiOutput("metadata_preview_ui"),
-          
-          tags$hr(),
-          
-          # Download section for metadata
-          uiOutput("metadata_download_card")
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), " Generate METADATA annotations. Selected columns will be included as multibar fields in iTOL.")
+            ),
+            
+            uiOutput("metadata_preview_ui"),
+            
+            tags$hr(),
+            
+            uiOutput("metadata_download_card")
+          )
         )
       ),
       
@@ -435,25 +485,24 @@ ui <- page_sidebar(
         "Change Labels",
         icon = icon("tags"),
         card_body(
-          div(class = "info-box",
-              p(icon("info-circle"), " Replace tree labels with new values from your data.")
-          ),
-          
-          # Column selection for labels
-          card(
-            card_header("Label Configuration"),
-            card_body(
-              uiOutput("label_column_selection")
-            )
-          ),
-          
-          # Labels preview
-          uiOutput("labels_preview_ui"),
-          
-          tags$hr(),
-          
-          # Download section for labels
-          uiOutput("labels_download_card")
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), " Replace tree labels with new values from your data.")
+            ),
+            
+            card(
+              card_header("Label Configuration"),
+              card_body(
+                uiOutput("label_column_selection")
+              )
+            ),
+            
+            uiOutput("labels_preview_ui"),
+            
+            tags$hr(),
+            
+            uiOutput("labels_download_card")
+          )
         )
       )
     )
@@ -988,10 +1037,13 @@ server <- function(input, output, session) {
         ),
         
         # Filled/empty option
-        checkboxInput(
-          paste0("binary_filled_", col),
-          "Show only filled shapes (hide empty shapes)",
-          value = current_binary_filled
+        div(
+          style = "margin-bottom: 1rem;",
+          checkboxInput(
+            paste0("binary_filled_", col),
+            "Show only filled shapes (hide empty shapes)",
+            value = current_binary_filled
+          )
         ),
         
         tags$hr(),
@@ -1263,10 +1315,13 @@ server <- function(input, output, session) {
         tags$br(),
         
         # Show values checkbox
-        checkboxInput(
-          paste0("bar_show_value_", col),
-          "Show values on bars",
-          value = isolate(input[[paste0("bar_show_value_", col)]]) %||% TRUE
+        div(
+          style = "margin-bottom: 1rem;",
+          checkboxInput(
+            paste0("bar_show_value_", col),
+            "Show values on bars",
+            value = isolate(input[[paste0("bar_show_value_", col)]]) %||% TRUE
+          )
         ),
         
         # Value label settings (only show if show_value is checked)
@@ -1286,10 +1341,13 @@ server <- function(input, output, session) {
             selected = isolate(input[[paste0("bar_value_position_", col)]]) %||% "outside-right"
           ),
           
-          checkboxInput(
-            paste0("bar_auto_color_", col),
-            "Automatic label color (white/black based on bar darkness)",
-            value = isolate(input[[paste0("bar_auto_color_", col)]]) %||% TRUE
+          div(
+            style = "margin-bottom: 1rem;",
+            checkboxInput(
+              paste0("bar_auto_color_", col),
+              "Automatic label color (white/black based on bar darkness)",
+              value = isolate(input[[paste0("bar_auto_color_", col)]]) %||% TRUE
+            )
           ),
           
           # Only show manual color picker if auto color is OFF
@@ -1773,6 +1831,376 @@ server <- function(input, output, session) {
       })
     }
   })
+
+  # ---- Multi-bar tab: Settings UI ----
+  output$multibar_settings_ui <- renderUI({
+    req(input$data_cols)
+    
+    df <- isolate(data())
+    
+    # Filter to numeric or convertible-to-numeric columns
+    numeric_cols <- c()
+    na_counts <- list()
+    
+    for(col in input$data_cols) {
+      col_data <- df[[col]]
+      
+      if(is.numeric(col_data)) {
+        numeric_cols <- c(numeric_cols, col)
+        na_counts[[col]] <- sum(is.na(col_data))
+      } else {
+        converted <- suppressWarnings(as.numeric(col_data))
+        non_na_count <- sum(!is.na(converted))
+        
+        if(non_na_count > 0) {
+          numeric_cols <- c(numeric_cols, col)
+          na_counts[[col]] <- sum(is.na(converted))
+        }
+      }
+    }
+    
+    if(length(numeric_cols) == 0) {
+      return(
+        div(
+          class = "info-box",
+          style = "background-color: #fff3cd; border-left-color: #ffc107;",
+          p(icon("exclamation-triangle"), "No numeric columns selected. Please select at least one numeric column to generate multi-value bar charts.")
+        )
+      )
+    }
+    
+    # Show info about NA filtering if any columns have NAs
+    info_messages <- tagList()
+    has_nas <- FALSE
+    for(col in numeric_cols) {
+      if(na_counts[[col]] > 0) {
+        has_nas <- TRUE
+        info_messages <- tagList(
+          info_messages,
+          div(
+            class = "help-text",
+            style = "color: #856404; margin-bottom: 0.5rem;",
+            icon("info-circle"),
+            sprintf(" Column '%s': %d NA/non-numeric value(s) will be filtered out", col, na_counts[[col]])
+          )
+        )
+      }
+    }
+    
+    # Get current settings
+    current_selected <- isolate(input$multibar_fields)
+    current_align <- isolate(input$multibar_align)
+    current_side_stacked <- isolate(input$multibar_side_stacked)
+    current_show_value <- isolate(input$multibar_show_value)
+    current_label_position <- isolate(input$multibar_label_position)
+    current_auto_color <- isolate(input$multibar_auto_color)
+    current_label_color <- isolate(input$multibar_label_color)
+    
+    if(is.null(current_selected)) current_selected <- numeric_cols[1:min(3, length(numeric_cols))]
+    if(is.null(current_align)) current_align <- FALSE
+    if(is.null(current_side_stacked)) current_side_stacked <- FALSE
+    if(is.null(current_show_value)) current_show_value <- FALSE
+    if(is.null(current_label_position)) current_label_position <- "right"
+    if(is.null(current_auto_color)) current_auto_color <- TRUE
+    if(is.null(current_label_color)) current_label_color <- "#000000"
+    
+    tagList(
+      # NA filtering info box
+      if(has_nas) {
+        div(
+          class = "info-box",
+          style = "background-color: #fff3cd; border-left-color: #ffc107; margin-bottom: 1rem;",
+          p(tags$strong("Value Filtering:")),
+          info_messages
+        )
+      },
+      
+      card(
+        card_header("Field Selection"),
+        card_body(
+          selectizeInput(
+            "multibar_fields",
+            "Select Numeric Columns to Display",
+            choices = numeric_cols,
+            selected = current_selected,
+            multiple = TRUE,
+            options = list(
+              placeholder = 'Select 2 or more columns',
+              plugins = list('remove_button')
+            )
+          ),
+          div(class = "help-text",
+              "Select multiple numeric columns to display as a multi-value bar chart")
+        )
+      ),
+      
+      card(
+        card_header("Field Colors"),
+        card_body(
+          uiOutput("multibar_color_inputs")
+        )
+      ),
+      
+      card(
+        card_header("Display Options"),
+        card_body(
+          div(
+            style = "margin-bottom: 1rem;",
+            checkboxInput(
+              "multibar_align",
+              "Align fields (display side-by-side instead of stacked)",
+              value = current_align
+            )
+          ),
+          
+          conditionalPanel(
+            condition = "input.multibar_align == false",
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                "multibar_side_stacked",
+                "Side stacked (display fields next to each other)",
+                value = current_side_stacked
+              )
+            )
+          ),
+          
+          tags$hr(),
+          
+          textInput(
+            "multibar_scale",
+            "Scale Lines (comma-separated values)",
+            value = isolate(input$multibar_scale) %||% "",
+            placeholder = "e.g., 10,50,100"
+          ),
+          div(class = "help-text",
+              "Optional: Specify values where scale lines will be drawn"),
+          
+          tags$hr(),
+          
+          div(
+            style = "margin-bottom: 1rem;",
+            checkboxInput(
+              "multibar_show_value",
+              "Show values on bars",
+              value = current_show_value
+            )
+          ),
+          
+          conditionalPanel(
+            condition = "input.multibar_show_value",
+            selectInput(
+              "multibar_label_position",
+              "Value Label Position",
+              choices = c(
+                "Left" = "left",
+                "Center" = "center",
+                "Right" = "right"
+              ),
+              selected = current_label_position
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                "multibar_auto_color",
+                "Automatic label color (white/black based on bar darkness)",
+                value = current_auto_color
+              )
+            ),
+            
+            conditionalPanel(
+              condition = "!input.multibar_auto_color",
+              colourInput(
+                "multibar_label_color",
+                "Value Label Color",
+                value = current_label_color,
+                showColour = "both",
+                palette = "square",
+                returnName = FALSE
+              )
+            )
+          )
+        )
+      )
+    )
+  })
+  
+  # ---- Multi-bar color inputs ----
+  output$multibar_color_inputs <- renderUI({
+    req(input$multibar_fields)
+    
+    if(length(input$multibar_fields) == 0) {
+      return(
+        div(class = "help-text", "Select fields to configure colors")
+      )
+    }
+    
+    # Default colors
+    default_colors <- c("#ff0000", "#00ff00", "#0000ff", "#ff00ff", "#00ffff", "#ffff00")
+    
+    tagList(
+      lapply(seq_along(input$multibar_fields), function(idx) {
+        field <- input$multibar_fields[idx]
+        default_color <- default_colors[((idx - 1) %% length(default_colors)) + 1]
+        current_color <- isolate(input[[paste0("multibar_field_color_", safe_id(field))]])
+        if(is.null(current_color)) current_color <- default_color
+        
+        div(
+          class = "value-config",
+          div(class = "value-label", field),
+          colourInput(
+            paste0("multibar_field_color_", safe_id(field)),
+            NULL,
+            value = current_color,
+            showColour = "both",
+            palette = "square",
+            returnName = FALSE
+          )
+        )
+      })
+    )
+  })
+  
+  # ---- Generate multi-bar outputs ----
+multibar_output <- reactive({
+  req(data(), input$id_col, input$multibar_fields)
+  
+  if(length(input$multibar_fields) < 1) return(NULL)
+  
+  df <- data()
+  fields <- input$multibar_fields
+  
+  # Get settings
+  multibar_align <- input$multibar_align
+  multibar_side_stacked <- input$multibar_side_stacked
+  multibar_scale <- input$multibar_scale
+  multibar_show_value <- input$multibar_show_value
+  multibar_label_position <- input$multibar_label_position
+  multibar_auto_color <- input$multibar_auto_color
+  multibar_label_color <- input$multibar_label_color
+  
+  if(is.null(multibar_align)) multibar_align <- FALSE
+  if(is.null(multibar_side_stacked)) multibar_side_stacked <- FALSE
+  if(is.null(multibar_scale)) multibar_scale <- ""
+  if(is.null(multibar_show_value)) multibar_show_value <- FALSE
+  if(is.null(multibar_label_position)) multibar_label_position <- "right"
+  if(is.null(multibar_auto_color)) multibar_auto_color <- TRUE
+  if(is.null(multibar_label_color)) multibar_label_color <- "#000000"
+  
+  # Build iTOL DATASET_MULTIBAR format
+  content <- c("DATASET_MULTIBAR")
+  content <- c(content, "SEPARATOR COMMA")
+  content <- c(content, paste0("DATASET_LABEL,", input$dataset_label, " - multibar"))
+  content <- c(content, "COLOR,#ff0000")
+  content <- c(content, "")
+  
+  # Get field colors
+  field_colors <- sapply(fields, function(field) {
+    color <- input[[paste0("multibar_field_color_", safe_id(field))]]
+    if(is.null(color)) "#3498DB" else color
+  })
+  
+  content <- c(content, paste0("FIELD_COLORS,", paste(field_colors, collapse = ",")))
+  content <- c(content, paste0("FIELD_LABELS,", paste(fields, collapse = ",")))
+  content <- c(content, "")
+  
+  # Add scale lines if specified
+  if(multibar_scale != "" && !is.na(multibar_scale)) {
+    scale_values <- trimws(unlist(strsplit(multibar_scale, ",")))
+    scale_line <- paste(scale_values, collapse = ",")
+    content <- c(content, paste0("DATASET_SCALE,", scale_line))
+    content <- c(content, "")
+  }
+  
+  # Display options
+  if(multibar_align) {
+    content <- c(content, "ALIGN_FIELDS,1")
+  } else {
+    content <- c(content, "ALIGN_FIELDS,0")
+    if(multibar_side_stacked) {
+      content <- c(content, "SIDE_STACKED,1")
+    }
+  }
+  
+  content <- c(content, "")
+  content <- c(content, "SHOW_LABELS,1")
+  
+  # Value display settings
+  if(multibar_show_value) {
+    content <- c(content, "SHOW_VALUE,1")
+    content <- c(content, paste0("LABEL_POSITION,", multibar_label_position))
+    
+    if(multibar_auto_color) {
+      content <- c(content, "LABEL_AUTO_COLOR,1")
+    } else {
+      content <- c(content, "LABEL_AUTO_COLOR,0")
+      content <- c(content, paste0("BAR_LABEL_COLOR,", multibar_label_color))
+    }
+  } else {
+    content <- c(content, "SHOW_VALUE,0")
+  }
+  
+  content <- c(content, "")
+  content <- c(content, "DATA")
+  
+  # Data: ID followed by multiple numeric values
+  for(i in 1:nrow(df)) {
+    id <- as.character(df[[input$id_col]][i])
+    
+    # Get values for each field, converting to numeric if needed
+    values <- sapply(fields, function(field) {
+      col_data <- df[[field]]
+      if(!is.numeric(col_data)) {
+        col_data <- suppressWarnings(as.numeric(col_data))
+      }
+      val <- col_data[i]
+      
+      # Return value or skip if NA
+      if(!is.na(val)) {
+        return(as.character(val))
+      } else {
+        return(NA_character_)
+      }
+    })
+    
+    # Only include row if at least one value is non-NA
+    if(any(!is.na(values))) {
+      # Replace NA with empty string for iTOL format
+      values[is.na(values)] <- ""
+      content <- c(content, paste(c(id, values), collapse = ","))
+    }
+  }
+  
+  return(paste(content, collapse = "\n"))
+})
+  
+  # ---- Multi-bar download card ----
+  output$multibar_download_card <- renderUI({
+    req(multibar_output())
+    
+    card(
+      card_header("Download Multi-Value Bar Chart"),
+      card_body(
+        downloadButton(
+          "download_multibar",
+          "Download Multi-Bar Chart File",
+          class = "btn-success w-100",
+          icon = icon("download")
+        )
+      )
+    )
+  })
+  
+  # ---- Multi-bar download handler ----
+  output$download_multibar <- downloadHandler(
+    filename = function() {
+      paste0(input$dataset_label, "_multibar.txt")
+    },
+    content = function(file) {
+      writeLines(multibar_output(), file)
+    }
+  )
       
   # Metadata download
   output$download_metadata <- downloadHandler(
