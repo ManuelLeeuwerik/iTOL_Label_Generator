@@ -453,19 +453,45 @@ server <- function(input, output, session) {
     df <- isolate(data())
     brewer_pals <- get_brewer_palettes()
     
-    # Build palette choices
-    palette_choices <- list()
-    palette_choices[["--- Sequential ---"]] <- ""
-    for(pal in brewer_pals$Sequential) palette_choices[[pal]] <- pal
-    palette_choices[["--- Qualitative ---"]] <- ""
-    for(pal in brewer_pals$Qualitative) palette_choices[[pal]] <- pal
-    palette_choices[["--- Diverging ---"]] <- ""
-    for(pal in brewer_pals$Diverging) palette_choices[[pal]] <- pal
-    
     # Create accordion for each column
     accordion_items <- lapply(seq_along(input$data_cols), function(idx) {
       col <- input$data_cols[idx]
-      col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
+      col_data <- df[[col]]
+      
+      # Determine if column is numeric (same logic as bar chart tab)
+      is_numeric_col <- is.numeric(col_data)
+      if(!is_numeric_col) {
+        # Try converting to numeric
+        converted <- suppressWarnings(as.numeric(col_data))
+        non_na_count <- sum(!is.na(converted))
+        # If at least one value converts successfully, treat as numeric
+        is_numeric_col <- non_na_count > 0
+      }
+      
+      # Get unique values (after standardization and NA removal)
+      if(is_numeric_col) {
+        # For numeric columns, convert and remove NAs
+        if(!is.numeric(col_data)) {
+          col_data <- suppressWarnings(as.numeric(col_data))
+        }
+        col_values <- unique(col_data[!is.na(col_data)])
+        col_values <- sort(col_values)  # Sort numeric values
+      } else {
+        # For qualitative columns, standardize and remove NAs
+        col_values <- unique(sapply(as.character(col_data), standardize_value))
+        col_values <- col_values[!is.na(col_values)]
+      }
+      
+      # Build palette choices based on column type
+      if(is_numeric_col) {
+        # Sequential palettes only for numeric data
+        palette_choices <- c("Select a palette" = "", brewer_pals$Sequential)
+        default_palette <- "Blues"
+      } else {
+        # Qualitative palettes only for categorical data
+        palette_choices <- c("Select a palette" = "", brewer_pals$Qualitative)
+        default_palette <- "Set1"
+      }
       
       # Get current settings
       current_color_mode <- isolate(input[[paste0("color_mode_", col)]])
@@ -473,23 +499,39 @@ server <- function(input, output, session) {
       current_symbol_mode <- isolate(input[[paste0("symbol_mode_", col)]])
       current_auto_symbol <- isolate(input[[paste0("auto_symbol_", col)]])
       
-      if(is.null(current_color_mode)) current_color_mode <- "Auto (Hue)"
-      if(is.null(current_brewer_pal)) current_brewer_pal <- "Set1"
+      if(is.null(current_color_mode)) {
+        current_color_mode <- "ColorBrewer" 
+      }
+      if(is.null(current_brewer_pal)) current_brewer_pal <- default_palette
       if(is.null(current_symbol_mode)) current_symbol_mode <- "Auto"
       if(is.null(current_auto_symbol)) current_auto_symbol <- 1
       
       # Create accordion item
       accordion_panel(
-        title = col,
+        title = paste0(col, if(is_numeric_col) " (Numeric)" else " (Categorical)"),
         value = paste0("panel_", idx),
+        
+        # Info about column type
+        div(
+          class = "info-box",
+          style = "margin-bottom: 1rem; font-size: 0.85rem;",
+          p(
+            icon(if(is_numeric_col) "hashtag" else "font"),
+            if(is_numeric_col) {
+              sprintf("Numeric column with %d unique values (NA values filtered)", length(col_values))
+            } else {
+              sprintf("Categorical column with %d unique values (NA values filtered)", length(col_values))
+            }
+          )
+        ),
         
         # Color mode selection
         radioGroupButtons(
           paste0("color_mode_", col),
           "Color Mode",
-          choices = c("Auto (Hue)" = "Auto (Hue)", 
-                      "ColorBrewer" = "ColorBrewer", 
-                      "Manual" = "Manual"),
+          choices = c("ColorBrewer" = "ColorBrewer", 
+                      "Manual" = "Manual",
+                      "Hue Scale" = "Hue Scale"),
           selected = current_color_mode,
           justified = FALSE,
           size = "xs",
@@ -503,9 +545,16 @@ server <- function(input, output, session) {
           condition = sprintf("input['color_mode_%s'] == 'ColorBrewer'", col),
           selectInput(
             paste0("brewer_palette_", col),
-            "Select Palette",
+            if(is_numeric_col) "Select Sequential Palette" else "Select Qualitative Palette",
             choices = palette_choices,
             selected = current_brewer_pal
+          ),
+          div(class = "help-text",
+              if(is_numeric_col) {
+                "Sequential palettes are recommended for numeric data"
+              } else {
+                "Qualitative palettes are recommended for categorical data"
+              }
           )
         ),
         
@@ -550,7 +599,8 @@ server <- function(input, output, session) {
           condition = sprintf("input['color_mode_%s'] == 'Manual' || input['symbol_mode_%s'] == 'Manual'", col, col),
           tags$h6("Configure Individual Values"),
           lapply(col_values, function(val) {
-            val_id <- safe_id(paste(col, val, sep = "_"))
+            val_display <- if(is_numeric_col) as.character(val) else val
+            val_id <- safe_id(paste(col, val_display, sep = "_"))
             
             current_color <- isolate(input[[paste0("color_", val_id)]])
             current_symbol <- isolate(input[[paste0("symbol_", val_id)]])
@@ -560,7 +610,7 @@ server <- function(input, output, session) {
             
             div(
               class = "value-config",
-              div(class = "value-label", val),
+              div(class = "value-label", val_display),
               conditionalPanel(
                 condition = sprintf("input['color_mode_%s'] == 'Manual'", col),
                 colourInput(
@@ -595,112 +645,166 @@ server <- function(input, output, session) {
       !!!accordion_items
     )
   })
-  
+    
   # ---- ColorBrewer plot for symbol tab ----
   output$brewer_plot_symbol <- renderPlot({
-    par(mar = c(2, 8, 2, 2))
-    display.brewer.all()
-  }, res = 96)
+    # Create layout for two separate sections
+    par(mfrow = c(2, 1), mar = c(1, 10, 3, 2))
+    
+    # Sequential palettes
+    display.brewer.all(type = "seq")
+    title("Sequential Palettes (for Numeric Data)", cex.main = 1.2, font.main = 2)
+    
+    # Qualitative palettes
+    display.brewer.all(type = "qual")
+    title("Qualitative Palettes (for Categorical Data)", cex.main = 1.2, font.main = 2)
+    
+  }, res = 96, height = 600)
   
   # ---- Generate symbol outputs ----
-  symbol_outputs <- reactive({
-    req(data(), input$id_col, input$data_cols)
+# ---- Generate symbol outputs ----
+symbol_outputs <- reactive({
+  req(data(), input$id_col, input$data_cols)
+  
+  df <- data()
+  output_list <- list()
+  
+  for(col in input$data_cols) {
+    col_data <- df[[col]]
     
-    df <- data()
-    output_list <- list()
-    
-    for(col in input$data_cols) {
-      col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
-      
-      # Get color and symbol settings
-      color_mode <- input[[paste0("color_mode_", col)]]
-      symbol_mode <- input[[paste0("symbol_mode_", col)]]
-      symbol_filled <- input[[paste0("symbol_filled_", col)]]
-      
-      if(is.null(color_mode)) color_mode <- "Auto (Hue)"
-      if(is.null(symbol_mode)) symbol_mode <- "Auto"
-      if(is.null(symbol_filled)) symbol_filled <- TRUE
-      
-      # Generate colors
-      if(color_mode == "ColorBrewer") {
-        brewer_pal <- input[[paste0("brewer_palette_", col)]]
-        if(is.null(brewer_pal)) brewer_pal <- "Set1"
-        n_colors <- max(3, min(length(col_values), 12))
-        colors <- brewer.pal(n_colors, brewer_pal)
-        if(length(col_values) > length(colors)) {
-          colors <- colorRampPalette(colors)(length(col_values))
-        }
-        color_map <- setNames(colors[1:length(col_values)], col_values)
-      } else if(color_mode == "Manual") {
-        color_map <- setNames(
-          sapply(col_values, function(val) {
-            val_id <- safe_id(paste(col, val, sep = "_"))
-            color <- input[[paste0("color_", val_id)]]
-            if(is.null(color)) "#3498DB" else color
-          }),
-          col_values
-        )
-      } else {  # Auto (Hue)
-        colors <- hue_pal()(length(col_values))
-        color_map <- setNames(colors, col_values)
-      }
-      
-      # Generate symbols
-      if(symbol_mode == "Auto") {
-        auto_symbol <- input[[paste0("auto_symbol_", col)]]
-        if(is.null(auto_symbol)) auto_symbol <- 1
-        symbol_map <- setNames(rep(auto_symbol, length(col_values)), col_values)
-      } else {  # Manual
-        symbol_map <- setNames(
-          sapply(col_values, function(val) {
-            val_id <- safe_id(paste(col, val, sep = "_"))
-            symbol <- input[[paste0("symbol_", val_id)]]
-            if(is.null(symbol)) 2 else symbol
-          }),
-          col_values
-        )
-      }
-      
-      # Build iTOL DATASET_SYMBOL format
-      content <- c("DATASET_SYMBOL")
-      content <- c(content, "SEPARATOR TAB")
-      content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col), sep = "\t"))
-      content <- c(content, paste("COLOR", "#2C5F8D", sep = "\t"))
-      content <- c(content, "")
-      content <- c(content, paste("LEGEND_TITLE", col, sep = "\t"))
-      content <- c(content, paste("LEGEND_SHAPES", paste(symbol_map, collapse = "\t"), sep = "\t"))
-      content <- c(content, paste("LEGEND_COLORS", paste(color_map, collapse = "\t"), sep = "\t"))
-      content <- c(content, paste("LEGEND_LABELS", paste(names(color_map), collapse = "\t"), sep = "\t"))
-      content <- c(content, "")
-      
-      # Set maximum symbol size
-      content <- c(content, "MAXIMUM_SIZE\t5")
-      content <- c(content, "")
-
-      # Label settings to prevent size/position shifting
-      content <- c(content, "SHOW_LABELS\t1")
-      content <- c(content, "LABEL_SIZE_FACTOR\t1")
-      content <- c(content, "LABEL_ROTATION\t0")
-      content <- c(content, "LABEL_SHIFT\t0")
-      content <- c(content, "")
-      content <- c(content, "DATA")
-      
-      # Data format: ID, symbol, size, color, fill, position, label
-      # Use uniform size of 10 for all symbols (iTOL will scale based on MAXIMUM_SIZE)
-      for(i in 1:nrow(df)) {
-        id <- as.character(df[[input$id_col]][i])
-        val <- standardize_value(df[[col]][i])
-        symbol <- symbol_map[val]
-        color <- color_map[val]
-        fill_value <- if(symbol_filled) "1" else "0"
-        content <- c(content, paste(id, symbol, "1", color, fill_value, "-1", val, sep = "\t"))
-      }
-      
-      output_list[[col]] <- paste(content, collapse = "\n")
+    # Determine if column is numeric (same logic as bar chart and UI)
+    is_numeric_col <- is.numeric(col_data)
+    if(!is_numeric_col) {
+      converted <- suppressWarnings(as.numeric(col_data))
+      non_na_count <- sum(!is.na(converted))
+      is_numeric_col <- non_na_count > 0
     }
     
-    return(output_list)
-  })
+    # Get unique values with NA filtering
+    if(is_numeric_col) {
+      if(!is.numeric(col_data)) {
+        col_data_clean <- suppressWarnings(as.numeric(col_data))
+      } else {
+        col_data_clean <- col_data
+      }
+      col_values <- unique(col_data_clean[!is.na(col_data_clean)])
+      col_values <- sort(col_values)
+    } else {
+      col_values <- unique(sapply(as.character(col_data), standardize_value))
+      col_values <- col_values[!is.na(col_values)]
+    }
+    
+    # Get color and symbol settings
+    color_mode <- input[[paste0("color_mode_", col)]]
+    symbol_mode <- input[[paste0("symbol_mode_", col)]]
+    symbol_filled <- input[[paste0("symbol_filled_", col)]]
+    
+    if(is.null(color_mode)) {
+      color_mode <- "ColorBrewer"
+    }
+    if(is.null(symbol_mode)) symbol_mode <- "Auto"
+    if(is.null(symbol_filled)) symbol_filled <- TRUE
+    
+    # Generate colors
+    if(color_mode == "ColorBrewer") {
+      brewer_pal <- input[[paste0("brewer_palette_", col)]]
+      if(is.null(brewer_pal)) brewer_pal <- if(is_numeric_col) "Blues" else "Set1"
+      n_colors <- max(3, min(length(col_values), 12))
+      colors <- brewer.pal(n_colors, brewer_pal)
+      if(length(col_values) > length(colors)) {
+        colors <- colorRampPalette(colors)(length(col_values))
+      }
+      color_map <- setNames(colors[1:length(col_values)], as.character(col_values))
+    } else if(color_mode == "Manual") {
+      color_map <- setNames(
+        sapply(col_values, function(val) {
+          val_display <- if(is_numeric_col) as.character(val) else val
+          val_id <- safe_id(paste(col, val_display, sep = "_"))
+          color <- input[[paste0("color_", val_id)]]
+          if(is.null(color)) "#3498DB" else color
+        }),
+        as.character(col_values)
+      )
+    } else {  # Hue Scale
+      colors <- hue_pal()(length(col_values))
+      color_map <- setNames(colors, as.character(col_values))
+    }
+    
+    # Generate symbols
+    if(symbol_mode == "Auto") {
+      auto_symbol <- input[[paste0("auto_symbol_", col)]]
+      if(is.null(auto_symbol)) auto_symbol <- 1
+      symbol_map <- setNames(rep(auto_symbol, length(col_values)), as.character(col_values))
+    } else {  # Manual
+      symbol_map <- setNames(
+        sapply(col_values, function(val) {
+          val_display <- if(is_numeric_col) as.character(val) else val
+          val_id <- safe_id(paste(col, val_display, sep = "_"))
+          symbol <- input[[paste0("symbol_", val_id)]]
+          if(is.null(symbol)) 2 else symbol
+        }),
+        as.character(col_values)
+      )
+    }
+    
+    # Build iTOL DATASET_SYMBOL format
+    content <- c("DATASET_SYMBOL")
+    content <- c(content, "SEPARATOR TAB")
+    content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col), sep = "\t"))
+    content <- c(content, paste("COLOR", "#2C5F8D", sep = "\t"))
+    content <- c(content, "")
+    content <- c(content, paste("LEGEND_TITLE", col, sep = "\t"))
+    content <- c(content, paste("LEGEND_SHAPES", paste(symbol_map, collapse = "\t"), sep = "\t"))
+    content <- c(content, paste("LEGEND_COLORS", paste(color_map, collapse = "\t"), sep = "\t"))
+    content <- c(content, paste("LEGEND_LABELS", paste(names(color_map), collapse = "\t"), sep = "\t"))
+    content <- c(content, "")
+    
+    # Set maximum symbol size
+    content <- c(content, "MAXIMUM_SIZE\t5")
+    content <- c(content, "")
+
+    # Label settings to prevent size/position shifting
+    content <- c(content, "SHOW_LABELS\t1")
+    content <- c(content, "LABEL_SIZE_FACTOR\t1")
+    content <- c(content, "LABEL_ROTATION\t0")
+    content <- c(content, "LABEL_SHIFT\t0")
+    content <- c(content, "")
+    content <- c(content, "DATA")
+    
+    # Data format: ID, symbol, size, color, fill, position, label
+    for(i in 1:nrow(df)) {
+      id <- as.character(df[[input$id_col]][i])
+      
+      # Get value and handle numeric vs categorical appropriately
+      if(is_numeric_col) {
+        if(!is.numeric(col_data)) {
+          val <- suppressWarnings(as.numeric(df[[col]][i]))
+        } else {
+          val <- col_data[i]
+        }
+        val_display <- if(!is.na(val)) as.character(val) else NA_character_
+        val_key <- val
+      } else {
+        val <- standardize_value(df[[col]][i])
+        val_display <- val
+        val_key <- val
+      }
+      
+      # Skip NA values
+      if(!is.na(val_key)) {
+        val_key_char <- as.character(val_key)
+        symbol <- symbol_map[val_key_char]
+        color <- color_map[val_key_char]
+        fill_value <- if(symbol_filled) "1" else "0"
+        content <- c(content, paste(id, symbol, "1", color, fill_value, "-1", val_display, sep = "\t"))
+      }
+    }
+    
+    output_list[[col]] <- paste(content, collapse = "\n")
+  }
+  
+  return(output_list)
+})
   
   # ---- Symbol download card ----
   output$symbol_download_card <- renderUI({
