@@ -1010,7 +1010,7 @@ server <- function(input, output, session) {
       
       if(is.null(current_binary_shape)) current_binary_shape <- 2
       if(is.null(current_binary_color)) current_binary_color <- "#3498DB"
-      if(is.null(current_binary_filled)) current_binary_filled <- FALSE
+      if(is.null(current_binary_filled)) current_binary_filled <- TRUE
       
       # Create accordion item
       accordion_panel(
@@ -1338,7 +1338,7 @@ server <- function(input, output, session) {
               "Right" = "right",
               "Dataset Center" = "dataset-center"
             ),
-            selected = isolate(input[[paste0("bar_value_position_", col)]]) %||% "outside-right"
+            selected = isolate(input[[paste0("bar_value_position_", col)]]) %||% "left"
           ),
           
           div(
@@ -1423,7 +1423,12 @@ server <- function(input, output, session) {
       content <- c(content, "SEPARATOR TAB")
       content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col), sep = "\t"))
       content <- c(content, paste("COLOR", bar_color, sep = "\t"))
+      # Add legend
       content <- c(content, "")
+      content <- c(content, paste("LEGEND_TITLE", col, sep = "\t"))
+      content <- c(content, paste("LEGEND_SHAPES", "1", sep = "\t"))
+      content <- c(content, paste("LEGEND_COLORS", bar_color, sep = "\t"))
+      content <- c(content, paste("LEGEND_LABELS", col, sep = "\t"))
       
       # Add scale lines if specified (convert comma-separated to tab-separated)
       if(bar_scale != "" && !is.na(bar_scale)) {
@@ -1899,8 +1904,8 @@ server <- function(input, output, session) {
     if(is.null(current_selected)) current_selected <- numeric_cols[1:min(3, length(numeric_cols))]
     if(is.null(current_align)) current_align <- FALSE
     if(is.null(current_side_stacked)) current_side_stacked <- FALSE
-    if(is.null(current_show_value)) current_show_value <- FALSE
-    if(is.null(current_label_position)) current_label_position <- "right"
+    if(is.null(current_show_value)) current_show_value <- TRUE
+    if(is.null(current_label_position)) current_label_position <- "left"
     if(is.null(current_auto_color)) current_auto_color <- TRUE
     if(is.null(current_label_color)) current_label_color <- "#000000"
     
@@ -2083,16 +2088,16 @@ multibar_output <- reactive({
   if(is.null(multibar_align)) multibar_align <- FALSE
   if(is.null(multibar_side_stacked)) multibar_side_stacked <- FALSE
   if(is.null(multibar_scale)) multibar_scale <- ""
-  if(is.null(multibar_show_value)) multibar_show_value <- FALSE
-  if(is.null(multibar_label_position)) multibar_label_position <- "right"
+  if(is.null(multibar_show_value)) multibar_show_value <- TRUE
+  if(is.null(multibar_label_position)) multibar_label_position <- "left"
   if(is.null(multibar_auto_color)) multibar_auto_color <- TRUE
   if(is.null(multibar_label_color)) multibar_label_color <- "#000000"
   
   # Build iTOL DATASET_MULTIBAR format
   content <- c("DATASET_MULTIBAR")
-  content <- c(content, "SEPARATOR COMMA")
-  content <- c(content, paste0("DATASET_LABEL,", input$dataset_label, " - multibar"))
-  content <- c(content, "COLOR,#ff0000")
+  content <- c(content, "SEPARATOR TAB")
+  content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "- multibar"), sep = "\t"))
+  content <- c(content, paste("COLOR", "#ff0000", sep = "\t"))
   content <- c(content, "")
   
   # Get field colors
@@ -2101,44 +2106,51 @@ multibar_output <- reactive({
     if(is.null(color)) "#3498DB" else color
   })
   
-  content <- c(content, paste0("FIELD_COLORS,", paste(field_colors, collapse = ",")))
-  content <- c(content, paste0("FIELD_LABELS,", paste(fields, collapse = ",")))
+  content <- c(content, paste("FIELD_COLORS", paste(field_colors, collapse = "\t"), sep = "\t"))
+  content <- c(content, paste("FIELD_LABELS", paste(fields, collapse = "\t"), sep = "\t"))
+  
+  # Add legend
+  content <- c(content, "")
+  content <- c(content, paste("LEGEND_TITLE", "Dataset legend", sep = "\t"))
+  content <- c(content, paste("LEGEND_SHAPES", paste(rep("1", length(fields)), collapse = "\t"), sep = "\t"))
+  content <- c(content, paste("LEGEND_COLORS", paste(field_colors, collapse = "\t"), sep = "\t"))
+  content <- c(content, paste("LEGEND_LABELS", paste(fields, collapse = "\t"), sep = "\t"))
   content <- c(content, "")
   
   # Add scale lines if specified
   if(multibar_scale != "" && !is.na(multibar_scale)) {
     scale_values <- trimws(unlist(strsplit(multibar_scale, ",")))
-    scale_line <- paste(scale_values, collapse = ",")
-    content <- c(content, paste0("DATASET_SCALE,", scale_line))
+    scale_line <- paste(scale_values, collapse = "\t")
+    content <- c(content, paste("DATASET_SCALE", scale_line, sep = "\t"))
     content <- c(content, "")
   }
   
   # Display options
   if(multibar_align) {
-    content <- c(content, "ALIGN_FIELDS,1")
+    content <- c(content, paste("ALIGN_FIELDS", "1", sep = "\t"))
   } else {
-    content <- c(content, "ALIGN_FIELDS,0")
+    content <- c(content, paste("ALIGN_FIELDS", "0", sep = "\t"))
     if(multibar_side_stacked) {
-      content <- c(content, "SIDE_STACKED,1")
+      content <- c(content, paste("SIDE_STACKED", "1", sep = "\t"))
     }
   }
   
   content <- c(content, "")
-  content <- c(content, "SHOW_LABELS,1")
+  content <- c(content, paste("SHOW_LABELS", "1", sep = "\t"))
   
   # Value display settings
   if(multibar_show_value) {
-    content <- c(content, "SHOW_VALUE,1")
-    content <- c(content, paste0("LABEL_POSITION,", multibar_label_position))
+    content <- c(content, paste("SHOW_VALUE", "1", sep = "\t"))
+    content <- c(content, paste("LABEL_POSITION", multibar_label_position, sep = "\t"))
     
     if(multibar_auto_color) {
-      content <- c(content, "LABEL_AUTO_COLOR,1")
+      content <- c(content, paste("LABEL_AUTO_COLOR", "1", sep = "\t"))
     } else {
-      content <- c(content, "LABEL_AUTO_COLOR,0")
-      content <- c(content, paste0("BAR_LABEL_COLOR,", multibar_label_color))
+      content <- c(content, paste("LABEL_AUTO_COLOR", "0", sep = "\t"))
+      content <- c(content, paste("BAR_LABEL_COLOR", multibar_label_color, sep = "\t"))
     }
   } else {
-    content <- c(content, "SHOW_VALUE,0")
+    content <- c(content, paste("SHOW_VALUE", "0", sep = "\t"))
   }
   
   content <- c(content, "")
@@ -2168,7 +2180,7 @@ multibar_output <- reactive({
     if(any(!is.na(values))) {
       # Replace NA with empty string for iTOL format
       values[is.na(values)] <- ""
-      content <- c(content, paste(c(id, values), collapse = ","))
+      content <- c(content, paste(c(id, values), collapse = "\t"))
     }
   }
   
