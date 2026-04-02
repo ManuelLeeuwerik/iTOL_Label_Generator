@@ -838,15 +838,22 @@ server <- function(input, output, session) {
 
   # ---- Generate binary outputs ----
   binary_outputs <- reactive({
+    # Validate all requirements
     req(data(), input$id_col, input$data_cols)
+    req(length(input$data_cols) > 0)
     
+    # Only isolate the data frame, not the inputs
     df <- data()
     output_list <- list()
     
     for(col in input$data_cols) {
       col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
+      # Remove NA values from col_values
+      col_values <- col_values[!is.na(col_values)]
       
-      # Get settings
+      if(length(col_values) == 0) next  # Skip columns with no valid values
+      
+      # Get settings WITHOUT isolation - we want these to be reactive
       binary_mode <- input[[paste0("binary_mode_", col)]]
       binary_shape <- input[[paste0("binary_shape_", col)]]
       binary_color <- input[[paste0("binary_color_", col)]]
@@ -856,7 +863,7 @@ server <- function(input, output, session) {
       if(is.null(binary_mode)) binary_mode <- "all"
       if(is.null(binary_shape)) binary_shape <- 2
       if(is.null(binary_color)) binary_color <- "#3498DB"
-      if(is.null(binary_filled)) binary_filled <- FALSE
+      if(is.null(binary_filled)) binary_filled <- TRUE
       if(is.null(selected_values) && binary_mode != "all") selected_values <- col_values[1]
       
       # Determine which values to include
@@ -907,9 +914,16 @@ server <- function(input, output, session) {
         id <- as.character(df[[input$id_col]][i])
         val <- standardize_value(df[[col]][i])
         
-        # Create binary vector
+        # Create binary vector with proper NA handling
         binary_vec <- sapply(fields, function(field) {
-          if(val == field) {
+          # Check if val is NA first
+          if(is.na(val)) {
+            if(binary_filled) {
+              return(-1)  # Omit shape for NA values
+            } else {
+              return(0)  # Empty shape for NA values
+            }
+          } else if(val == field) {
             return(1)  # Filled shape
           } else if(binary_filled) {
             return(-1)  # Omit shape
@@ -1451,24 +1465,30 @@ server <- function(input, output, session) {
   
   # Individual symbol files
   observe({
-    req(symbol_outputs())
-    content_list <- symbol_outputs()
+    req(input$data_cols)
     
-    if(length(content_list) > 1) {
-      lapply(names(content_list), function(name) {
-        local({
-          my_name <- name
-          output[[paste0("download_symbol_", safe_id(my_name))]] <- downloadHandler(
-            filename = function() {
-              paste0(my_name, ".txt")
-            },
-            content = function(file) {
-              writeLines(content_list[[my_name]], file)
-            }
-          )
+    tryCatch({
+      content_list <- symbol_outputs()
+      req(content_list)
+      
+      if(length(content_list) > 1) {
+        lapply(names(content_list), function(name) {
+          local({
+            my_name <- name
+            output[[paste0("download_symbol_", safe_id(my_name))]] <- downloadHandler(
+              filename = function() {
+                paste0(my_name, ".txt")
+              },
+              content = function(file) {
+                writeLines(content_list[[my_name]], file)
+              }
+            )
+          })
         })
-      })
-    }
+      }
+    }, error = function(e) {
+      NULL
+    })
   })
 
 
@@ -1512,24 +1532,33 @@ server <- function(input, output, session) {
   
   # Individual binary files
   observe({
-    req(binary_outputs())
-    content_list <- binary_outputs()
+    # Add requirement and validation
+    req(input$data_cols)
     
-    if(length(content_list) > 1) {
-      lapply(names(content_list), function(name) {
-        local({
-          my_name <- name
-          output[[paste0("download_binary_", safe_id(my_name))]] <- downloadHandler(
-            filename = function() {
-              paste0(my_name, "_binary.txt")
-            },
-            content = function(file) {
-              writeLines(content_list[[my_name]], file)
-            }
-          )
+    # Use try-catch to prevent errors
+    tryCatch({
+      content_list <- binary_outputs()
+      req(content_list)
+      
+      if(length(content_list) > 1) {
+        lapply(names(content_list), function(name) {
+          local({
+            my_name <- name
+            output[[paste0("download_binary_", safe_id(my_name))]] <- downloadHandler(
+              filename = function() {
+                paste0(my_name, "_binary.txt")
+              },
+              content = function(file) {
+                writeLines(content_list[[my_name]], file)
+              }
+            )
+          })
         })
-      })
-    }
+      }
+    }, error = function(e) {
+      # Silently handle errors during initial load
+      NULL
+    })
   })
 
     # Single bar chart file
@@ -1572,24 +1601,30 @@ server <- function(input, output, session) {
   
   # Individual bar chart files
   observe({
-    req(bar_outputs())
-    content_list <- bar_outputs()
+    req(input$data_cols)
     
-    if(length(content_list) > 1) {
-      lapply(names(content_list), function(name) {
-        local({
-          my_name <- name
-          output[[paste0("download_bar_", safe_id(my_name))]] <- downloadHandler(
-            filename = function() {
-              paste0(my_name, "_bar.txt")
-            },
-            content = function(file) {
-              writeLines(content_list[[my_name]], file)
-            }
-          )
+    tryCatch({
+      content_list <- bar_outputs()
+      req(content_list)
+      
+      if(length(content_list) > 1) {
+        lapply(names(content_list), function(name) {
+          local({
+            my_name <- name
+            output[[paste0("download_bar_", safe_id(my_name))]] <- downloadHandler(
+              filename = function() {
+                paste0(my_name, "_bar.txt")
+              },
+              content = function(file) {
+                writeLines(content_list[[my_name]], file)
+              }
+            )
+          })
         })
-      })
-    }
+      }
+    }, error = function(e) {
+      NULL
+    })
   })
 
   # ---- Multi-bar tab: Settings UI ----
