@@ -759,8 +759,8 @@ symbol_outputs <- reactive({
     content <- c(content, paste("LEGEND_LABELS", paste(names(color_map), collapse = "\t"), sep = "\t"))
     content <- c(content, "")
     
-    # Set maximum symbol size
-    content <- c(content, "MAXIMUM_SIZE\t5")
+    # Set maximum symbol size (works well for rectangular tree, adjust as needed for circular)
+    content <- c(content, "MAXIMUM_SIZE\t14")
     content <- c(content, "")
 
     # Label settings to prevent size/position shifting
