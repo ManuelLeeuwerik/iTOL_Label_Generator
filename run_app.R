@@ -1,1 +1,1 @@
-shiny::runApp(port = 8000)
+shiny::runApp()
