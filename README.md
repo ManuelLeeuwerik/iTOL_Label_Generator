@@ -21,12 +21,12 @@ Click Browse to upload a file:
 - TSV
 - CSV
 - XLSX
-Select sheet (if Excel file has multiple sheets)
+  - Select sheet (if Excel file has multiple sheets)
 
 ## 2. Configure Columns
-ID Column: Choose column matching your tree tip labels
-Columns to Visualize: Select metadata columns
-Dataset Label: Enter a descriptive name
+* **ID Column:** Choose column matching your tree tip labels
+* **Columns to Visualize:** Select metadata columns
+* **Dataset Label:** Enter a descriptive name
 
 ## 3. Generate Annotations
 Navigate through tabs to create different annotation types:
