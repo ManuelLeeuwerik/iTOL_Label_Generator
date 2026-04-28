@@ -18,52 +18,84 @@ Rscript run_app.R
 # Usage Workflow
 ## 1. Upload Data
 Click `Browse` to upload a file:
-- TSV
-- CSV
-- XLSX
-  - Select sheet (if Excel file has multiple sheets)
+- TSV (tab-separated values)
+- CSV (comma-separated values)
+- XLSX (Excel file)
+  - If the file has multiple sheets, a dialog will appear to select which sheet to import
 
 ## 2. Configure Columns
-* **ID Column:** Choose column matching your tree tip labels
-* **Columns to Visualize:** Select metadata columns
-* **Dataset Label:** Enter a descriptive name
+- **ID Column:** Select the column that contains unique identifiers matching your phylogenetic tree tip labels
+- **Columns to Visualize:** Choose one or more metadata columns to generate annotations from
+- **Dataset Label:** Enter a descriptive name for your annotation set (used in filenames and iTOL legends)
 
 ## 3. Generate Annotations
 Navigate through tabs to create different annotation types:
 
-- `Data Preview`
-  - Verify uploaded data structure
-- `Symbol Annotations` (DATASET_SYMBOL)
-  - Categorical/numeric data as colored symbols
-  - Choose ColorBrewer palettes or custom colors
-  - Select symbol shapes: square, circle, star, triangle, checkmark
-- `Binary Set` (DATASET_BINARY)
-  - Presence/absence patterns
-  - Include/exclude specific values or show all as separate fields
-- `Simple Bar Chart` (DATASET_SIMPLEBAR)
-  - Single numeric values as horizontal bars
-  - Customize colors, scale lines, and value labels
-- `Multi-Value Bar Chart` (DATASET_MULTIBAR)
-  - Multiple numeric columns as stacked/aligned bars
-  - Compare variables side-by-side
-- `Metadata` (METADATA)
-  - Export all selected columns in iTOL metadata format
- - `Change Labels` (LABELS)
-  - Replace tree tip labels with alternative values
+### `Data Preview`
+- Verify uploaded data structure before generating annotations
+### `Symbol Annotations`
+- Display categorical or numeric data as colored symbols next to tree tips
+- **Color Options**:
+  - ColorBrewer palettes: Choose from sequential (numeric data) or qualitative (categorical data) color schemes
+  - Manual colors: Select custom colors for each unique value
+  - Hue Scale: Automatically generate colors using a hue-based palette
+- **Symbol Options**:
+  - Auto mode: Apply the same symbol shape to all values
+  - Manual mode: Assign different shapes (square, circle, star, triangle, checkmark) to each value
+- Fill Options: Toggle between filled symbols or outline-only shapes
+- View ColorBrewer palette reference within the tab for guidance
+### `Binary Set`
+- Show presence/absence patterns for categorical data
+- Configure symbol shape, color, and fill behavior
+- **Value Selection Modes**:
+  - Include specific values: Show presence only for selected values
+  - Exclude specific values: Show presence for all except selected values
+- All values as separate fields: Create individual binary fields for each unique value
+- Ideal for displaying trait presence, gene presence/absence, or classification membership
+### `Simple Bar Chart`
+- Display single numeric values as horizontal bars outside the tree
+- Customize bar color, scale lines, and value labels
+- **Value Label Options**:
+  - Choose label position (outside, left, center, right)
+  - Enable automatic label color contrast or set manual colors
+- Useful for showing single measurements like genome size, abundance, or scores
+### `Multi-Value Bar Chart`
+- Display multiple numeric columns simultaneously
+- **Display Modes**:
+  - Stacked bars: Values stacked on top of each other
+  - Aligned bars: Values displayed side-by-side for direct comparison
+  - Side stacked: Hybrid approach with fields next to each other
+- Configure individual colors for each field
+### `Metadata`
+- Export all selected columns in iTOL metadata format
+- Generates a comprehensive metadata file that can be used for tree annotation and data exploration in iTOL
+- All selected columns are included as-is without filtering
+### `Change Labels`
+- Replace tree tip labels with alternative values from your data
+- Configuration:
+  - ID Column: Select the column containing current/original tree labels
+  - New Tip Label Column: Select the column with replacement labels
+- Useful for switching between different identifier systems (e.g., accession numbers to species names)
 
 ## 4. Download
-Individual files or ZIP archive for multiple annotations. Files are ready to upload directly to iTOL.
+- Single files: Download individual annotation files for each column
+- ZIP archives: Download all annotations of the same type at once
+- Files are ready to upload directly to iTOL by dragging and dropping onto your tree
 
-## Important Notes
-- NA values: Automatically filtered from visualizations. Use "Unknown" if needed
-- Symbol sizes: May differ between circular vs rectangular tree layouts in iTOL
-- Matching labels: ID column must exactly match tree tip labels (case-sensitive)
-- Numeric detection: Columns auto-detected if convertible to numbers
+## Notes
+- **Symbol sizes:** May appear different between circular and rectangular tree layouts in iTOL. The app is optimized for rectangular layouts, this can be changed in iTOL as well
+- **Color palettes:** Sequential palettes (Blues, Greens, etc.) work best for numeric data; qualitative palettes (Set1, Paired, etc.) work best for categorical data
+- **Bar scaling:** Scale lines help provide reference points for numeric values; specify them as comma-separated values (e.g., "10,50,100")
+- **NA values:** Automatically filtered from visualizations. If you need to represent unknown data, use explicit text like "Unknown" instead
+- **Matching labels:** The ID column must exactly match tree tip labels (case-sensitive, whitespace-sensitive)
+- **Numeric detection:** Columns are automatically detected as numeric if they contain values convertible to numbers
 
 ## Troubleshooting
-- "No numeric columns selected" → Ensure numeric or convertible values
-- "Excel sheet selection doesn't appear" → File has only one sheet
-- "Annotations don't appear in iTOL" → Check ID column matches tree labels
-- "Download button not appearing" → Ensure valid column selection
+| Issue | Solution | 
+| ----- | --------- |
+| "No numeric columns selected" | Ensure selected columns contain numeric or numeric-convertible values. Check for non-numeric characters or inconsistent formatting |
+| "Annotations don't appear in iTOL" | Verify the ID column exactly matches tree tip labels. iTOL will give the error: "Couldn't find ID.. in the tree" |
+| "Download button not appearing" | Ensure valid columns are selected and all required settings are configured. Check for error messages in the UI |
+| "Excel sheet selection doesn't appear" | The file contains only one sheet and will be loaded automatically. No selection needed |
 
 > Compatible with: iTOL v7.51 (other versions not tested)
