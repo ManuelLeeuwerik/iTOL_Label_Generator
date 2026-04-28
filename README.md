@@ -17,7 +17,7 @@ Rscript run_app.R
 
 # Usage Workflow
 ## 1. Upload Data
-Click Browse to upload a file:
+Click `Browse` to upload a file:
 - TSV
 - CSV
 - XLSX
@@ -31,24 +31,24 @@ Click Browse to upload a file:
 ## 3. Generate Annotations
 Navigate through tabs to create different annotation types:
 
-- Data Preview
+- `Data Preview`
   - Verify uploaded data structure
-- Symbol Annotations (DATASET_SYMBOL)
+- `Symbol Annotations` (DATASET_SYMBOL)
   - Categorical/numeric data as colored symbols
   - Choose ColorBrewer palettes or custom colors
   - Select symbol shapes: square, circle, star, triangle, checkmark
-- Binary Set (DATASET_BINARY)
+- `Binary Set` (DATASET_BINARY)
   - Presence/absence patterns
   - Include/exclude specific values or show all as separate fields
-- Simple Bar Chart (DATASET_SIMPLEBAR)
+- `Simple Bar Chart` (DATASET_SIMPLEBAR)
   - Single numeric values as horizontal bars
   - Customize colors, scale lines, and value labels
-- Multi-Value Bar Chart (DATASET_MULTIBAR)
+- `Multi-Value Bar Chart` (DATASET_MULTIBAR)
   - Multiple numeric columns as stacked/aligned bars
   - Compare variables side-by-side
-- Metadata (METADATA)
+- `Metadata` (METADATA)
   - Export all selected columns in iTOL metadata format
-- Change Labels (LABELS)
+ - `Change Labels` (LABELS)
   - Replace tree tip labels with alternative values
 
 ## 4. Download
@@ -60,31 +60,10 @@ Individual files or ZIP archive for multiple annotations. Files are ready to upl
 - Matching labels: ID column must exactly match tree tip labels (case-sensitive)
 - Numeric detection: Columns auto-detected if convertible to numbers
 
-## Tips
-**DO**
-- Use consistent ID formatting
-- Include descriptive column names
-- Standardize missing values
-
-**DON'T**
-- Mix ID formats in same column
-- Use special characters in IDs (@, #, *)
-- Leave trailing spaces
-- Use inconsistent capitalization
-
 ## Troubleshooting
-"No numeric columns selected" → Ensure numeric or convertible values
-"Excel sheet selection doesn't appear" → File has only one sheet
-"Annotations don't appear in iTOL" → Check ID column matches tree labels
-"Download button not appearing" → Ensure valid column selection
+- "No numeric columns selected" → Ensure numeric or convertible values
+- "Excel sheet selection doesn't appear" → File has only one sheet
+- "Annotations don't appear in iTOL" → Check ID column matches tree labels
+- "Download button not appearing" → Ensure valid column selection
 
-File Outputs
-
-Naming convention:
-
-{DatasetLabel}_{Type}.txt (single files)
-{DatasetLabel}_{Type}_{Timestamp}.zip (archives)
-
-Compatible with:
-- iTOL v6+
-- Dataset types: SYMBOL, BINARY, SIMPLEBAR, MULTIBAR, METADATA, LABELS
+> Compatible with: iTOL v7.51 (other versions not tested)
