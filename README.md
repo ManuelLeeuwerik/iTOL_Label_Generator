@@ -1,24 +1,90 @@
 # iTOL Label Generator
-This Shiny app converts tabular metadata into annotation files for iTOL.
-If you're new to iTOL, see the quick guide below.
 
-## Running the app
-Activate the conda environment and run the app.
+A Shiny application for generating iTOL (Interactive Tree of Life) annotation files from tabular metadata.
 
-**Conda:**
+# Installation
+Create **conda** environment and activate it:
 
 ```bash
-conda env create -f rshiny.yaml
-conda activate rshiny 
+conda env create -f rshiny.yaml  
+conda activate rshiny  
 ```
-
-To **run** Rshiny app:
+Run the App:
 
 ```bash
-Rscript run_app.R 
+Rscript run_app.R  
 ```
 
-**Note:**
-- If the input table contains samples that are not present in the tree, their values may still be included when generating the dataset. This can result in legend entries for categories that are not visible on the tree.
-- Symbol sizes in DATASET_SYMBOL datasets appear different when switching between circular and rectangular tree layouts. This is due to how iTOL scales symbols. As a result, symbol sizes may need to be adjusted manually within the iTOL interface depending on the selected layout.
-- NAs filtered from set so if you want to note missing data points you can add Unknown or Not done for instead.
+# Usage Workflow
+## 1. Upload Data
+Click Browse to upload a file:
+- TSV
+- CSV
+- XLSX
+Select sheet (if Excel file has multiple sheets)
+
+## 2. Configure Columns
+ID Column: Choose column matching your tree tip labels
+Columns to Visualize: Select metadata columns
+Dataset Label: Enter a descriptive name
+
+## 3. Generate Annotations
+Navigate through tabs to create different annotation types:
+
+- Data Preview
+  - Verify uploaded data structure
+- Symbol Annotations (DATASET_SYMBOL)
+  - Categorical/numeric data as colored symbols
+  - Choose ColorBrewer palettes or custom colors
+  - Select symbol shapes: square, circle, star, triangle, checkmark
+- Binary Set (DATASET_BINARY)
+  - Presence/absence patterns
+  - Include/exclude specific values or show all as separate fields
+- Simple Bar Chart (DATASET_SIMPLEBAR)
+  - Single numeric values as horizontal bars
+  - Customize colors, scale lines, and value labels
+- Multi-Value Bar Chart (DATASET_MULTIBAR)
+  - Multiple numeric columns as stacked/aligned bars
+  - Compare variables side-by-side
+- Metadata (METADATA)
+  - Export all selected columns in iTOL metadata format
+- Change Labels (LABELS)
+  - Replace tree tip labels with alternative values
+
+## 4. Download
+Individual files or ZIP archive for multiple annotations. Files are ready to upload directly to iTOL.
+
+## Important Notes
+- NA values: Automatically filtered from visualizations. Use "Unknown" if needed
+- Symbol sizes: May differ between circular vs rectangular tree layouts in iTOL
+- Matching labels: ID column must exactly match tree tip labels (case-sensitive)
+- Numeric detection: Columns auto-detected if convertible to numbers
+
+## Tips
+**DO**
+- Use consistent ID formatting
+- Include descriptive column names
+- Standardize missing values
+
+**DON'T**
+- Mix ID formats in same column
+- Use special characters in IDs (@, #, *)
+- Leave trailing spaces
+- Use inconsistent capitalization
+
+## Troubleshooting
+"No numeric columns selected" → Ensure numeric or convertible values
+"Excel sheet selection doesn't appear" → File has only one sheet
+"Annotations don't appear in iTOL" → Check ID column matches tree labels
+"Download button not appearing" → Ensure valid column selection
+
+File Outputs
+
+Naming convention:
+
+{DatasetLabel}_{Type}.txt (single files)
+{DatasetLabel}_{Type}_{Timestamp}.zip (archives)
+
+Compatible with:
+- iTOL v6+
+- Dataset types: SYMBOL, BINARY, SIMPLEBAR, MULTIBAR, METADATA, LABELS
