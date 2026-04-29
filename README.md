@@ -98,4 +98,6 @@ Navigate through tabs to create different annotation types:
 | "Download button not appearing" | Ensure valid columns are selected and all required settings are configured. Check for error messages in the UI |
 | "Excel sheet selection doesn't appear" | The file contains only one sheet and will be loaded automatically. No selection needed |
 
-> Compatible with: iTOL v7.51 (other versions not tested)
+
+
+> Compatible with: iTOL v7.51 (other versions not tested). This is an unofficial tool for generating annotation files compatible with iTOL and is not affiliated with or endorsed by iTOL.
