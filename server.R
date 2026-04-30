@@ -445,7 +445,7 @@ symbol_outputs <- reactive({
       brewer_pal <- input[[paste0("brewer_palette_", col)]]
       if(is.null(brewer_pal)) brewer_pal <- if(is_numeric_col) "Blues" else "Set1"
       n_colors <- max(3, min(length(col_values), 12))
-      colors <- brewer.pal(n_colors, brewer_pal)
+      colors <- suppressWarnings(brewer.pal(n_colors, brewer_pal))
       if(length(col_values) > length(colors)) {
         colors <- colorRampPalette(colors)(length(col_values))
       }
@@ -1093,12 +1093,7 @@ symbol_outputs <- reactive({
           na_count <- na_count + 1
         }
       }
-      
-      # Log filtered values
-      if(na_count > 0) {
-        message(sprintf("Column '%s': %d NA/non-numeric value(s) filtered from bar chart output", col, na_count))
-      }
-      
+           
       output_list[[col]] <- paste(content, collapse = "\n")
     }
     
@@ -1562,27 +1557,23 @@ symbol_outputs <- reactive({
       card(
         card_header("Display Options"),
         card_body(
-          div(
-            style = "margin-bottom: 1rem;",
-            checkboxInput(
-              "multibar_align",
-              "Align fields (display side-by-side instead of stacked)",
-              value = current_align
-            )
+          # Bar layout mode selection
+          radioButtons(
+            "multibar_layout",
+            "Bar Layout Mode",
+            choices = c(
+              "Stacked (default - values stacked vertically)" = "stacked",
+              "Aligned (fields displayed side-by-side)" = "aligned",
+              "Side Stacked (fields next to each other, slightly offset)" = "side_stacked"
+            ),
+            selected = isolate(input$multibar_layout) %||% "stacked"
           ),
           
-          conditionalPanel(
-            condition = "input.multibar_align == false",
-            div(
-              style = "margin-bottom: 1rem;",
-              checkboxInput(
-                "multibar_side_stacked",
-                "Side stacked (display fields next to each other)",
-                value = current_side_stacked
-              )
-            )
-          ),
-
+          div(class = "help-text",
+              "Choose how multiple fields are displayed in the bar chart"),
+          
+          tags$hr(),
+          
           div(
             style = "margin-bottom: 1rem;",
             checkboxInput(
@@ -1749,16 +1740,17 @@ multibar_output <- reactive({
     content <- c(content, "")
   }
   
-  # Display options
-  if(multibar_align) {
+  multibar_layout <- input$multibar_layout
+  if(is.null(multibar_layout)) multibar_layout <- "stacked"
+
+  if(multibar_layout == "aligned") {
     content <- c(content, paste("ALIGN_FIELDS", "1", sep = "\t"))
-  } else {
+  } else if(multibar_layout == "side_stacked") {
     content <- c(content, paste("ALIGN_FIELDS", "0", sep = "\t"))
-    if(multibar_side_stacked) {
-      content <- c(content, paste("SIDE_STACKED", "1", sep = "\t"))
-    }
+    content <- c(content, paste("SIDE_STACKED", "1", sep = "\t"))
+  } else {  # stacked (default)
+    content <- c(content, paste("ALIGN_FIELDS", "0", sep = "\t"))
   }
-  
   content <- c(content, "")
   content <- c(content, paste("SHOW_LABELS", "1", sep = "\t"))
   

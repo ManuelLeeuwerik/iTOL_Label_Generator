@@ -205,6 +205,18 @@ body {
   line-height: 1.3;
 }
 
+.form-check-label,
+.shiny-input-radiogroup label,
+input[type="radio"] + span {
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.radioGroupButtons label {
+  white-space: nowrap;
+  overflow: visible;
+}
+
 .accordion-button {
   background-color: #f8f9fa;
   color: #2C3E50;
