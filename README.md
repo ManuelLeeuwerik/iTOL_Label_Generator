@@ -23,6 +23,18 @@ Run the App:
 Rscript run_app.R
 ```
 
+## Example Data
+
+An example dataset is provided in the `example_data/` folder. You can use this dataset to quickly test the application without preparing your own data.
+
+- `tree.nwk` – phylogenetic tree
+- `metadata.csv / .tsv / .xlsx` – tabular metadata
+
+This dataset is derived from a published open-access study and has been used for demonstration purposes.
+
+> Rhodes, J., Abdolrasouli, A., Dunne, K. et al. Population genomics confirms acquisition of drug-resistant Aspergillus fumigatus infection by humans from the environment. Nat Microbiol 7, 663–674 (2022). https://doi.org/10.1038/s41564-022-01091-2
+
+
 # Usage Workflow
 ## 1. Upload Data
 Click `Browse` to upload a file:
@@ -105,7 +117,6 @@ Navigate through tabs to create different annotation types:
 | "Annotations don't appear in iTOL" | Verify the ID column exactly matches tree tip labels. iTOL will give the error: "Couldn't find ID.. in the tree" |
 | "Download button not appearing" | Ensure valid columns are selected and all required settings are configured. Check for error messages in the UI |
 | "Excel sheet selection doesn't appear" | The file contains only one sheet and will be loaded automatically. No selection needed |
-
-
+| "More values in the iTOL legend than visible on the tree" | The input table contains samples that are not present in the tree. Their values are included in the dataset, resulting in legend entries for categories that don't appear on the tree. Remove samples not present in the tree from your input table to resolve this |
 
 > Compatible with: iTOL v7.51 (other versions not tested). This is an unofficial tool for generating annotation files compatible with iTOL and is not affiliated with or endorsed by iTOL.

@@ -1712,7 +1712,7 @@ multibar_output <- reactive({
   content <- c("DATASET_MULTIBAR")
   content <- c(content, "SEPARATOR TAB")
   content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "- multibar"), sep = "\t"))
-  content <- c(content, paste("COLOR", "#ff0000", sep = "\t"))
+  content <- c(content, paste("COLOR", "#2C5F8D", sep = "\t"))
   content <- c(content, "")
   
   # Get field colors
