@@ -10,7 +10,7 @@ server <- function(input, output, session) {
     ext <- tools::file_ext(input$file$name)
     
     tryCatch({
-      if (ext == "tsv") {
+      df <- if (ext == "tsv") {
         read_tsv(file, show_col_types = FALSE)
       } else if (ext == "csv") {
         read_csv(file, show_col_types = FALSE)
@@ -29,6 +29,18 @@ server <- function(input, output, session) {
       } else {
         stop("Unsupported file format")
       }
+      
+      # Sanitize column names
+      names(df) <- sapply(names(df), sanitize_colname)
+      
+      # Check for duplicate names after sanitization
+      if(any(duplicated(names(df)))) {
+        # Make names unique by adding numeric suffix
+        names(df) <- make.unique(names(df), sep = "_")
+      }
+      
+      return(df)
+      
     }, error = function(e) {
       NULL
     })
@@ -396,7 +408,6 @@ server <- function(input, output, session) {
     
   }, res = 96, height = 600)
   
-  # ---- Generate symbol outputs ----
 # ---- Generate symbol outputs ----
 symbol_outputs <- reactive({
   req(data(), input$id_col, input$data_cols)
@@ -498,8 +509,8 @@ symbol_outputs <- reactive({
     content <- c(content, "MAXIMUM_SIZE\t14")
     content <- c(content, "")
 
-    # Label settings to prevent size/position shifting
-    content <- c(content, "SHOW_LABELS\t1")
+    # Label settings
+    content <- c(content, "SHOW_LABELS\t0")
     content <- c(content, "LABEL_SIZE_FACTOR\t1")
     content <- c(content, "LABEL_ROTATION\t0")
     content <- c(content, "LABEL_SHIFT\t0")
@@ -592,7 +603,8 @@ symbol_outputs <- reactive({
     accordion_items <- lapply(seq_along(input$data_cols), function(idx) {
       col <- input$data_cols[idx]
       col_values <- unique(sapply(as.character(df[[col]]), standardize_value))
-      
+      col_values <- col_values[!is.na(col_values)]  # Filter out NA values
+
       # Get current settings
       current_binary_shape <- isolate(input[[paste0("binary_shape_", col)]])
       current_binary_color <- isolate(input[[paste0("binary_color_", col)]])
@@ -1038,7 +1050,7 @@ symbol_outputs <- reactive({
       }
       
       content <- c(content, "")
-      content <- c(content, "SHOW_LABELS\t1")
+      content <- c(content, "SHOW_LABELS\t0")
       
       # Show value settings
       bar_show_value <- input[[paste0("bar_show_value_", col)]]
@@ -1752,7 +1764,7 @@ multibar_output <- reactive({
     content <- c(content, paste("ALIGN_FIELDS", "0", sep = "\t"))
   }
   content <- c(content, "")
-  content <- c(content, paste("SHOW_LABELS", "1", sep = "\t"))
+  content <- c(content, paste("SHOW_LABELS", "0", sep = "\t"))
   
   # Value display settings
   if(multibar_show_value) {

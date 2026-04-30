@@ -69,3 +69,18 @@ centered_download_button <- function(id, label, class = "btn-success", icon_name
     )
   )
 }
+
+# Standardize column names to be JavaScript-safe
+sanitize_colname <- function(x) {
+  # Replace spaces and special characters with underscores
+  x <- gsub("[^A-Za-z0-9_]", "_", x)
+  # Remove consecutive underscores
+  x <- gsub("_{2,}", "_", x)
+  # Remove leading/trailing underscores
+  x <- gsub("^_|_$", "", x)
+  # Ensure it doesn't start with a number
+  if(grepl("^[0-9]", x)) {
+    x <- paste0("col_", x)
+  }
+  return(x)
+}
