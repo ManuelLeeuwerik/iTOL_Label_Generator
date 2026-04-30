@@ -3,22 +3,24 @@
 A Shiny application for generating iTOL (Interactive Tree of Life) annotation files from tabular metadata, enabling rapid visualization of phylogenetic data.
 
 # Installation
-Clone the repository
+Clone the repository and go to it:
 
 ```bash
 git clone https://github.com/ManuelLeeuwerik/iTOL_Label_Generator.git
+
+cd iTOL_Label_Generator/
 ```
 
 Create **conda** environment and activate it:
 
 ```bash
-conda env create -f rshiny.yaml  
-conda activate rshiny  
+conda env create -f rshiny.yaml
+conda activate rshiny
 ```
 Run the App:
 
 ```bash
-Rscript run_app.R  
+Rscript run_app.R
 ```
 
 # Usage Workflow
