@@ -1651,17 +1651,15 @@ symbol_outputs <- reactive({
           
           tags$hr(),
           
-          div(
-            style = "margin-bottom: 1rem;",
-            checkboxInput(
-              "multibar_na_to_zero",
-              "Convert missing values (NA) to 0.0 (uncheck to exclude samples with missing data)",
-              value = isolate(input$multibar_na_to_zero) %||% TRUE
-            )
+          checkboxInput(
+            "multibar_na_to_zero",
+            "Convert missing values (NA) to 0.0 (uncheck to exclude samples with missing data)",
+            value = isolate(input$multibar_na_to_zero) %||% TRUE
           ),
           div(class = "help-text",
+              style = "margin-top: -0.5rem; margin-bottom: 1rem;",
               "When checked, missing values will be displayed as 0 in the chart. When unchecked, samples with any missing values will be excluded."),
-
+              
           tags$hr(),
 
           textInput(

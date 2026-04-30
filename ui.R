@@ -84,7 +84,7 @@ ui <- page_sidebar(
         card_body(
           div(class = "scrollable-tab-content",
             div(class = "info-box",
-                p(icon("info-circle"), "Configure colors and symbols for each metadata column.")
+                p(icon("info-circle"), "Generate DATASET_SYMBOL annotations. Configure colors and symbols for each metadata column.")
             ),
             
             uiOutput("symbol_column_settings_ui"),
@@ -168,7 +168,7 @@ ui <- page_sidebar(
         card_body(
           div(class = "scrollable-tab-content",
             div(class = "info-box",
-                p(icon("info-circle"), " Generate METADATA annotations. Selected columns will be included as multibar fields in iTOL.")
+                p(icon("info-circle"), "Generate METADATA annotations. Selected columns will be included as metadata fields in iTOL.")
             ),
             
             uiOutput("metadata_preview_ui"),
@@ -187,7 +187,7 @@ ui <- page_sidebar(
         card_body(
           div(class = "scrollable-tab-content",
             div(class = "info-box",
-                p(icon("info-circle"), " Replace tree labels with new values from your data.")
+                p(icon("info-circle"), "Generate LABELS annotation file. Replace tree labels with new values from your data.")
             ),
             
             card(
