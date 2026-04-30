@@ -235,7 +235,8 @@ server <- function(input, output, session) {
         "old_label_col",
         "ID Column",
         choices = cols,
-        selected = input$id_col
+        selected = input$id_col,
+        width = "200px"
       ),
       div(class = "help-text",
           "Column containing the labels currently/originally in your tree"),
@@ -246,7 +247,8 @@ server <- function(input, output, session) {
         "new_label_col",
         "New Tip Label Column",
         choices = cols,
-        selected = if(length(cols) > 1) cols[2] else cols[1]
+        selected = if(length(cols) > 1) cols[2] else cols[1],
+        width = "200px"
       ),
       div(class = "help-text",
           "Column containing the new tip labels to use")
@@ -354,7 +356,8 @@ server <- function(input, output, session) {
             paste0("brewer_palette_", col),
             if(is_numeric_col) "Select Sequential Palette" else "Select Qualitative Palette",
             choices = palette_choices,
-            selected = current_brewer_pal
+            selected = current_brewer_pal,
+            width = "200px"
           ),
           div(class = "help-text",
               if(is_numeric_col) {
@@ -388,7 +391,7 @@ server <- function(input, output, session) {
             "Symbol for All Values",
             choices = symbol_names,
             selected = current_auto_symbol,
-            width = "80%"
+            width = "200px"
           )
         ),
         
@@ -729,7 +732,8 @@ symbol_outputs <- reactive({
             paste0("binary_values_", col),
             "Select Values",
             choices = col_values,
-            selected = isolate(input[[paste0("binary_values_", col)]]) %||% col_values[1]
+            selected = isolate(input[[paste0("binary_values_", col)]]) %||% col_values[1],
+            width = "200px"
           )
         )
       )
@@ -1010,7 +1014,8 @@ symbol_outputs <- reactive({
               "Right" = "right",
               "Dataset Center" = "dataset-center"
             ),
-            selected = isolate(input[[paste0("bar_value_position_", col)]]) %||% "left"
+            selected = isolate(input[[paste0("bar_value_position_", col)]]) %||% "left",
+            width = "200px"
           ),
           
           div(
@@ -1689,7 +1694,8 @@ symbol_outputs <- reactive({
                 "Center" = "center",
                 "Right" = "right"
               ),
-              selected = current_label_position
+              selected = current_label_position,
+              width = "200px"
             ),
             
             div(
