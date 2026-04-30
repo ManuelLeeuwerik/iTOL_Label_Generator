@@ -8,17 +8,18 @@ server <- function(input, output, session) {
     req(input$file)
     file <- input$file$datapath
     ext <- tolower(tools::file_ext(input$file$name))
+    
     tryCatch({
+      
       df <- if (ext == "tsv") {
-        read_tsv(file, show_col_types = FALSE)
+        read_delim(file, delim = "\t", trim_ws = TRUE, show_col_types = FALSE)
       } else if (ext == "csv") {
         read_csv(file, show_col_types = FALSE)
       } else if (ext == "xlsx") {
         # Check number of sheets
         sheets <- excel_sheets(file)
         
-        if(length(sheets) > 1) {
-          # Multiple sheets - need selection
+        if (length(sheets) > 1) {
           req(input$excel_sheet)
           read_excel(file, sheet = input$excel_sheet)
         } else {
@@ -29,30 +30,67 @@ server <- function(input, output, session) {
         stop("Unsupported file format")
       }
       
+      # ---------------- VALIDATION ----------------
+      
+      # Validate that data was loaded
+      if (is.null(df) || nrow(df) == 0) {
+        showNotification(
+          "Error: File appears to be empty or could not be read",
+          type = "error",
+          duration = 5
+        )
+        return(NULL)
+      }
+      
+      # Check if parsing likely failed
+      if (ncol(df) == 1) {
+        showNotification(
+          "Warning: Only one column detected. File may not be properly delimited",
+          type = "warning",
+          duration = 7
+        )
+      }
+      
+      # Check for duplicate column names (before sanitization)
+      if (any(duplicated(names(df)))) {
+        showNotification(
+          "Warning: Duplicate column names detected. They will be made unique automatically",
+          type = "warning",
+          duration = 7
+        )
+      }
+      
+      # ---------------- SANITIZATION ----------------
+      
       # Sanitize column names
       names(df) <- sapply(names(df), sanitize_colname)
       
-      # Check for duplicate names after sanitization
-      if(any(duplicated(names(df)))) {
-        # Make names unique by adding numeric suffix
+      # Ensure uniqueness after sanitization
+      if (any(duplicated(names(df)))) {
         names(df) <- make.unique(names(df), sep = "_")
       }
       
       return(df)
       
     }, error = function(e) {
-      NULL
+      showNotification(
+        paste("Error loading file:", e$message),
+        type = "error",
+        duration = 10
+      )
+      return(NULL)
     })
   })
-
+  
+  
   # ---- Reactive to detect Excel sheets ----
   excel_sheets_list <- reactive({
     req(input$file)
-    ext <- tools::file_ext(input$file$name)
+    ext <- tolower(tools::file_ext(input$file$name))
     
-    if(ext == "xlsx") {
+    if (ext == "xlsx") {
       sheets <- excel_sheets(input$file$datapath)
-      if(length(sheets) > 1) {
+      if (length(sheets) > 1) {
         return(sheets)
       }
     }
@@ -145,6 +183,29 @@ server <- function(input, output, session) {
     )
   })
   
+  # ---- ID column validation ----
+  observeEvent(list(data(), input$id_col), {
+    req(data(), input$id_col)
+    
+    df <- data()
+    
+    if (any(is.na(df[[input$id_col]]) | df[[input$id_col]] == "")) {
+      showNotification(
+        "Warning: ID column contains missing or empty values",
+        type = "warning",
+        duration = 5
+      )
+    }
+    
+    if (any(duplicated(df[[input$id_col]]))) {
+      showNotification(
+        "Warning: ID column contains duplicate values. This may cause issues in iTOL",
+        type = "warning",
+        duration = 6
+      )
+    }
+  }, ignoreInit = TRUE)
+
   # ---- Dataset label card ----
   output$dataset_label_card <- renderUI({
     req(data())
