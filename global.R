@@ -70,7 +70,7 @@ centered_download_button <- function(id, label, class = "btn-success", icon_name
   )
 }
 
-# Standardize column names to be JavaScript-safe
+# Standardize column names
 sanitize_colname <- function(x) {
   # Replace spaces and special characters with underscores
   x <- gsub("[^A-Za-z0-9_]", "_", x)

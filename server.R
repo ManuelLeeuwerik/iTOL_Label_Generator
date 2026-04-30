@@ -7,8 +7,7 @@ server <- function(input, output, session) {
   data <- reactive({
     req(input$file)
     file <- input$file$datapath
-    ext <- tools::file_ext(input$file$name)
-    
+    ext <- tolower(tools::file_ext(input$file$name))
     tryCatch({
       df <- if (ext == "tsv") {
         read_tsv(file, show_col_types = FALSE)
