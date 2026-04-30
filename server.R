@@ -550,33 +550,29 @@ symbol_outputs <- reactive({
       card_header("Download Symbol Annotations"),
       card_body(
         if(length(content_list) == 1) {
-          downloadButton(
+          centered_download_button(
             "download_symbol_single", 
-            "Download Symbol File",
-            class = "btn-success w-100",
-            icon = icon("download")
+            "Download Symbol File"
           )
         } else {
           tagList(
-            downloadButton(
+            centered_download_button(
               "download_symbols_zip",
               "Download All Symbol Files (ZIP)",
-              class = "btn-success w-100",
-              icon = icon("file-zipper")
+              icon_name = "file-zipper"
             ),
             tags$br(),
             tags$br(),
-            div(class = "help-text",
+            div(class = "help-text-center",
                 "Or download each annotation file separately:"),
             tags$br(),
             lapply(names(content_list), function(name) {
               tags$div(
                 style = "margin-bottom: 0.5rem;",
-                downloadButton(
+                centered_download_button(
                   paste0("download_symbol_", safe_id(name)),
-                  label = paste0(name, ".txt"),
-                  class = "btn-primary w-100 btn-sm",
-                  icon = icon("download")
+                  paste0(name, ".txt"),
+                  class = "btn-primary btn-sm"
                 )
               )
             })
@@ -789,33 +785,29 @@ symbol_outputs <- reactive({
       card_header("Download Binary Annotations"),
       card_body(
         if(length(content_list) == 1) {
-          downloadButton(
+          centered_download_button(
             "download_binary_single", 
-            "Download Binary File",
-            class = "btn-success w-100",
-            icon = icon("download")
+            "Download Binary File"
           )
         } else {
           tagList(
-            downloadButton(
+            centered_download_button(
               "download_binary_zip",
               "Download All Binary Files (ZIP)",
-              class = "btn-success w-100",
-              icon = icon("file-zipper")
+              icon_name = "file-zipper"
             ),
             tags$br(),
             tags$br(),
-            div(class = "help-text",
+            div(class = "help-text-center",
                 "Or download each annotation file separately:"),
             tags$br(),
             lapply(names(content_list), function(name) {
               tags$div(
                 style = "margin-bottom: 0.5rem;",
-                downloadButton(
+                centered_download_button(
                   paste0("download_binary_", safe_id(name)),
-                  label = paste0(name, "_binary.txt"),
-                  class = "btn-primary w-100 btn-sm",
-                  icon = icon("download")
+                  paste0(name, "_binary.txt"),
+                  class = "btn-primary btn-sm"
                 )
               )
             })
@@ -1124,33 +1116,29 @@ symbol_outputs <- reactive({
       card_header("Download Bar Chart Annotations"),
       card_body(
         if(length(content_list) == 1) {
-          downloadButton(
+          centered_download_button(
             "download_bar_single", 
-            "Download Bar Chart File",
-            class = "btn-success w-100",
-            icon = icon("download")
+            "Download Bar Chart File"
           )
         } else {
           tagList(
-            downloadButton(
+            centered_download_button(
               "download_bar_zip",
               "Download All Bar Chart Files (ZIP)",
-              class = "btn-success w-100",
-              icon = icon("file-zipper")
+              icon_name = "file-zipper"
             ),
             tags$br(),
             tags$br(),
-            div(class = "help-text",
+            div(class = "help-text-center",
                 "Or download each annotation file separately:"),
             tags$br(),
             lapply(names(content_list), function(name) {
               tags$div(
                 style = "margin-bottom: 0.5rem;",
-                downloadButton(
+                centered_download_button(
                   paste0("download_bar_", safe_id(name)),
-                  label = paste0(name, "_bar.txt"),
-                  class = "btn-primary w-100 btn-sm",
-                  icon = icon("download")
+                  paste0(name, "_bar.txt"),
+                  class = "btn-primary btn-sm"
                 )
               )
             })
@@ -1202,11 +1190,9 @@ symbol_outputs <- reactive({
     card(
       card_header("Download Metadata"),
       card_body(
-        downloadButton(
+        centered_download_button(
           "download_metadata",
-          "Download metadata.txt",
-          class = "btn-success w-100",
-          icon = icon("download")
+          "Download metadata.txt"
         )
       )
     )
@@ -1252,11 +1238,9 @@ symbol_outputs <- reactive({
     card(
       card_header("Download Labels"),
       card_body(
-        downloadButton(
+        centered_download_button(
           "download_labels",
-          "Download labels.txt",
-          class = "btn-success w-100",
-          icon = icon("download")
+          "Download labels.txt"
         )
       )
     )
@@ -1682,7 +1666,7 @@ symbol_outputs <- reactive({
     }
     
     # Default colors
-    default_colors <- c("#ff0000", "#00ff00", "#0000ff", "#ff00ff", "#00ffff", "#ffff00")
+    default_colors <- c("#ff5757ff", "#86fc86ff", "#5858ffff", "#ff9bffff", "#7affffff", "#ffff88ff")
     
     tagList(
       lapply(seq_along(input$multibar_fields), function(idx) {
@@ -1847,11 +1831,9 @@ multibar_output <- reactive({
     card(
       card_header("Download Multi-Value Bar Chart"),
       card_body(
-        downloadButton(
+        centered_download_button(
           "download_multibar",
-          "Download Multi-Bar Chart File",
-          class = "btn-success w-100",
-          icon = icon("download")
+          "Download Multi-Bar Chart File"
         )
       )
     )

@@ -52,3 +52,20 @@ get_brewer_palettes <- function() {
     "Diverging" = c("BrBG", "PiYG", "PRGn", "PuOr", "RdBu", "RdGy", "RdYlBu", "RdYlGn", "Spectral")
   )
 }
+
+# Helper function for creating centered download buttons
+centered_download_button <- function(id, label, class = "btn-success", icon_name = "download", width = "750px") {
+  div(
+    style = "display: flex; justify-content: center;",
+    div(
+      style = paste0("max-width: ", width, "; width: 100%;"),
+      downloadButton(
+        id,
+        label,
+        class = class,
+        style = "width: 100%;",
+        icon = icon(icon_name)
+      )
+    )
+  )
+}
