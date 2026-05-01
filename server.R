@@ -467,7 +467,7 @@ server <- function(input, output, session) {
       if(is.null(current_symbol_mode)) current_symbol_mode <- "Auto"
       if(is.null(current_auto_symbol)) current_auto_symbol <- 1
       
-      # Create accordion item
+      # Create accordion item with advanced settings in side-by-side layout
       accordion_panel(
         title = paste0(col, if(is_numeric_col) " (Numeric)" else " (Categorical)"),
         value = paste0("panel_", idx),
@@ -596,6 +596,195 @@ server <- function(input, output, session) {
               )
             )
           })
+        ),
+        
+        tags$hr(),
+        
+        # ---- COLLAPSIBLE ADVANCED SETTINGS SECTION ----
+        tags$details(
+          # Summary (clickable header) - CLOSED by default
+          tags$summary(
+            style = "cursor: pointer; font-weight: 600; color: #2C5F8D; margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;",
+            icon("cog"),
+            "Advanced iTOL Settings"
+          ),
+          
+          # Content (hidden by default)
+          div(
+            style = "padding: 1rem; background-color: #f8f9fa; border-radius: 0.25rem; margin-top: 0.5rem; border: 1px solid #dee2e6;",
+            
+            # Maximum symbol size
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("symbol_max_size_", col),
+                "Maximum Symbol Size",
+                value = isolate(input[[paste0("symbol_max_size_", col)]]) %||% 14,
+                min = 1,
+                max = 100,
+                step = 1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Largest symbol will be displayed with this size (in pixels)")
+            ),
+            
+            # Gradient fill
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("symbol_gradient_", col),
+                "Use gradient fill (instead of solid color)",
+                value = isolate(input[[paste0("symbol_gradient_", col)]]) %||% FALSE
+              )
+            ),
+            
+            # Symbol spacing (for external symbols)
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("symbol_spacing_", col),
+                "Symbol Column Spacing",
+                value = isolate(input[[paste0("symbol_spacing_", col)]]) %||% 10,
+                min = 0,
+                max = 100,
+                step = 1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Spacing between symbol columns (only for external symbols)")
+            ),
+
+            # Symbol position
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("symbol_position_", col),
+                "Symbol Position",
+                value = isolate(input[[paste0("symbol_position_", col)]]) %||% -1,
+                min = -10,
+                max = 1,
+                step = 0.1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Position: 0-1 = on branch (0=start, 0.5=middle, 1=end), negative = external column (-1=first, -2=second, etc.)")
+            ),
+            
+            tags$hr(),
+            
+            # Legend settings
+            tags$h6(style = "color: #2C5F8D; margin-top: 1rem;", "Legend Settings"),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              textInput(
+                paste0("symbol_legend_title_", col),
+                "Legend Title",
+                value = isolate(input[[paste0("symbol_legend_title_", col)]]) %||% col,
+                width = "250px"
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("symbol_legend_visible_", col),
+                "Show legend initially",
+                value = isolate(input[[paste0("symbol_legend_visible_", col)]]) %||% TRUE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("symbol_legend_horizontal_", col),
+                "Horizontal legend layout",
+                value = isolate(input[[paste0("symbol_legend_horizontal_", col)]]) %||% FALSE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("symbol_legend_scale_", col),
+                "Legend Scale Factor",
+                value = isolate(input[[paste0("symbol_legend_scale_", col)]]) %||% 1,
+                min = 0.1,
+                max = 5,
+                step = 0.1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Scale factor for legend symbols")
+            ),
+            
+            tags$hr(),
+            
+            # Label settings
+            tags$h6(style = "color: #2C5F8D; margin-top = 1rem;", "Dataset Label Settings"),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("symbol_show_labels_", col),
+                "Show dataset label",
+                value = isolate(input[[paste0("symbol_show_labels_", col)]]) %||% FALSE
+              )
+            ),
+            
+            conditionalPanel(
+              condition = sprintf("input['symbol_show_labels_%s']", col),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                numericInput(
+                  paste0("symbol_label_size_factor_", col),
+                  "Label Size Factor",
+                  value = isolate(input[[paste0("symbol_label_size_factor_", col)]]) %||% 1,
+                  min = 0.1,
+                  max = 5,
+                  step = 0.1,
+                  width = "150px"
+                )
+              ),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                numericInput(
+                  paste0("symbol_label_rotation_", col),
+                  "Label Rotation (degrees)",
+                  value = isolate(input[[paste0("symbol_label_rotation_", col)]]) %||% 0,
+                  min = -180,
+                  max = 180,
+                  step = 1,
+                  width = "150px"
+                )
+              ),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                numericInput(
+                  paste0("symbol_label_shift_", col),
+                  "Label Horizontal Shift (pixels)",
+                  value = isolate(input[[paste0("symbol_label_shift_", col)]]) %||% 0,
+                  min = -200,
+                  max = 200,
+                  step = 1,
+                  width = "150px"
+                )
+              ),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                checkboxInput(
+                  paste0("symbol_label_align_to_tree_", col),
+                  "Align label to tree circle (circular mode only)",
+                  value = isolate(input[[paste0("symbol_label_align_to_tree_", col)]]) %||% FALSE
+                )
+              )
+            )
+          )
         )
       )
     })
@@ -660,9 +849,7 @@ symbol_outputs <- reactive({
     symbol_mode <- input[[paste0("symbol_mode_", col)]]
     symbol_filled <- input[[paste0("symbol_filled_", col)]]
     
-    if(is.null(color_mode)) {
-      color_mode <- "ColorBrewer"
-    }
+    if(is.null(color_mode)) color_mode <- "ColorBrewer"
     if(is.null(symbol_mode)) symbol_mode <- "Auto"
     if(is.null(symbol_filled)) symbol_filled <- TRUE
     
@@ -708,27 +895,52 @@ symbol_outputs <- reactive({
       )
     }
     
+    # Get advanced settings
+    symbol_max_size <- input[[paste0("symbol_max_size_", col)]] %||% 14
+    symbol_gradient <- input[[paste0("symbol_gradient_", col)]] %||% FALSE
+    symbol_spacing <- input[[paste0("symbol_spacing_", col)]] %||% 10
+    symbol_legend_title <- input[[paste0("symbol_legend_title_", col)]] %||% col
+    symbol_legend_visible <- input[[paste0("symbol_legend_visible_", col)]] %||% TRUE
+    symbol_legend_horizontal <- input[[paste0("symbol_legend_horizontal_", col)]] %||% FALSE
+    symbol_legend_scale <- input[[paste0("symbol_legend_scale_", col)]] %||% 1
+    symbol_show_labels <- input[[paste0("symbol_show_labels_", col)]] %||% FALSE
+    symbol_label_size_factor <- input[[paste0("symbol_label_size_factor_", col)]] %||% 1
+    symbol_label_rotation <- input[[paste0("symbol_label_rotation_", col)]] %||% 0
+    symbol_label_shift <- input[[paste0("symbol_label_shift_", col)]] %||% 0
+    symbol_label_align_to_tree <- input[[paste0("symbol_label_align_to_tree_", col)]] %||% FALSE
+    symbol_position <- input[[paste0("symbol_position_", col)]] %||% -1
+
     # Build iTOL DATASET_SYMBOL format
     content <- c("DATASET_SYMBOL")
     content <- c(content, "SEPARATOR TAB")
     content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col), sep = "\t"))
     content <- c(content, paste("COLOR", "#2C5F8D", sep = "\t"))
     content <- c(content, "")
-    content <- c(content, paste("LEGEND_TITLE", col, sep = "\t"))
+    
+    # Legend settings (with advanced options)
+    content <- c(content, paste("LEGEND_TITLE", symbol_legend_title, sep = "\t"))
+    content <- c(content, paste("LEGEND_SCALE", symbol_legend_scale, sep = "\t"))
+    content <- c(content, paste("LEGEND_VISIBLE", if(symbol_legend_visible) "1" else "0", sep = "\t"))
+    if(symbol_legend_horizontal) {
+      content <- c(content, paste("LEGEND_HORIZONTAL", "1", sep = "\t"))
+    }
     content <- c(content, paste("LEGEND_SHAPES", paste(symbol_map, collapse = "\t"), sep = "\t"))
     content <- c(content, paste("LEGEND_COLORS", paste(color_map, collapse = "\t"), sep = "\t"))
     content <- c(content, paste("LEGEND_LABELS", paste(names(color_map), collapse = "\t"), sep = "\t"))
     content <- c(content, "")
     
-    # Set maximum symbol size (works well for rectangular tree, adjust as needed for circular)
-    content <- c(content, "MAXIMUM_SIZE\t14")
+    # Symbol display settings (with advanced options)
+    content <- c(content, paste("MAXIMUM_SIZE", symbol_max_size, sep = "\t"))
+    content <- c(content, paste("GRADIENT_FILL", if(symbol_gradient) "1" else "0", sep = "\t"))
+    content <- c(content, paste("SYMBOL_SPACING", symbol_spacing, sep = "\t"))
     content <- c(content, "")
-
-    # Label settings
-    content <- c(content, "SHOW_LABELS\t0")
-    content <- c(content, "LABEL_SIZE_FACTOR\t1")
-    content <- c(content, "LABEL_ROTATION\t0")
-    content <- c(content, "LABEL_SHIFT\t0")
+    
+    # Label settings (with advanced options)
+    content <- c(content, paste("SHOW_LABELS", if(symbol_show_labels) "1" else "0", sep = "\t"))
+    content <- c(content, paste("LABEL_SIZE_FACTOR", symbol_label_size_factor, sep = "\t"))
+    content <- c(content, paste("LABEL_ROTATION", symbol_label_rotation, sep = "\t"))
+    content <- c(content, paste("LABEL_SHIFT", symbol_label_shift, sep = "\t"))
+    content <- c(content, paste("LABEL_ALIGN_TO_TREE", if(symbol_label_align_to_tree) "1" else "0", sep = "\t"))
     content <- c(content, "")
     content <- c(content, "DATA")
     
@@ -757,7 +969,7 @@ symbol_outputs <- reactive({
         symbol <- symbol_map[val_key_char]
         color <- color_map[val_key_char]
         fill_value <- if(symbol_filled) "1" else "0"
-        content <- c(content, paste(id, symbol, "1", color, fill_value, "-1", val_display, sep = "\t"))
+        content <- c(content, paste(id, symbol, "1", color, fill_value, symbol_position, val_display, sep = "\t"))
       }
     }
     
@@ -887,6 +1099,260 @@ symbol_outputs <- reactive({
             selected = isolate(input[[paste0("binary_values_", col)]]) %||% col_values[1],
             width = "200px"
           )
+        ),
+        
+        tags$hr(),
+        
+        # ---- COLLAPSIBLE ADVANCED SETTINGS SECTION ----
+        tags$details(
+          # Summary (clickable header) - CLOSED by default
+          tags$summary(
+            style = "cursor: pointer; font-weight: 600; color: #2C5F8D; margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;",
+            icon("cog"),
+            "Advanced iTOL Settings"
+          ),
+          
+          # Content (hidden by default)
+          div(
+            style = "padding: 1rem; background-color: #f8f9fa; border-radius: 0.25rem; margin-top: 0.5rem; border: 1px solid #dee2e6;",
+            
+            # Symbol height factor
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("binary_height_factor_", col),
+                "Symbol Height Factor",
+                value = isolate(input[[paste0("binary_height_factor_", col)]]) %||% 1,
+                min = 0.1,
+                max = 5,
+                step = 0.1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Multiplication factor for symbol height (values <1 decrease, >1 increase)")
+            ),
+            
+            # Symbol spacing
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("binary_symbol_spacing_", col),
+                "Symbol Spacing",
+                value = isolate(input[[paste0("binary_symbol_spacing_", col)]]) %||% 10,
+                min = 0,
+                max = 100,
+                step = 1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Spacing between individual binary levels when there's more than one")
+            ),
+            
+            # Margin
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("binary_margin_", col),
+                "Left Margin",
+                value = isolate(input[[paste0("binary_margin_", col)]]) %||% 0,
+                min = -100,
+                max = 100,
+                step = 1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Increase/decrease spacing to next dataset (can be negative for overlapping)")
+            ),
+            
+            tags$hr(),
+            
+            # Grid settings
+            tags$h6(style = "color: #2C5F8D; margin-top: 1rem;", "Grid Settings"),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("binary_horizontal_grid_", col),
+                "Show horizontal grid",
+                value = isolate(input[[paste0("binary_horizontal_grid_", col)]]) %||% FALSE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("binary_vertical_grid_", col),
+                "Show vertical grid",
+                value = isolate(input[[paste0("binary_vertical_grid_", col)]]) %||% FALSE
+              )
+            ),
+            
+            conditionalPanel(
+              condition = sprintf("input['binary_horizontal_grid_%s'] || input['binary_vertical_grid_%s']", col, col),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                colourInput(
+                  paste0("binary_grid_color_", col),
+                  "Grid Line Color",
+                  value = isolate(input[[paste0("binary_grid_color_", col)]]) %||% "#0000ff",
+                  showColour = "both",
+                  palette = "square",
+                  returnName = FALSE
+                )
+              ),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                numericInput(
+                  paste0("binary_grid_width_", col),
+                  "Grid Line Width",
+                  value = isolate(input[[paste0("binary_grid_width_", col)]]) %||% 0.6,
+                  min = 0.1,
+                  max = 10,
+                  step = 0.1,
+                  width = "150px"
+                )
+              )
+            ),
+            
+            tags$hr(),
+            
+            # Legend settings
+            tags$h6(style = "color: #2C5F8D; margin-top: 1rem;", "Legend Settings"),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              textInput(
+                paste0("binary_legend_title_", col),
+                "Legend Title",
+                value = isolate(input[[paste0("binary_legend_title_", col)]]) %||% col,
+                width = "250px"
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("binary_legend_visible_", col),
+                "Show legend initially",
+                value = isolate(input[[paste0("binary_legend_visible_", col)]]) %||% TRUE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("binary_legend_horizontal_", col),
+                "Horizontal legend layout",
+                value = isolate(input[[paste0("binary_legend_horizontal_", col)]]) %||% FALSE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("binary_legend_scale_", col),
+                "Legend Scale Factor",
+                value = isolate(input[[paste0("binary_legend_scale_", col)]]) %||% 1,
+                min = 0.1,
+                max = 5,
+                step = 0.1,
+                width = "150px"
+              )
+            ),
+            
+            tags$hr(),
+            
+            # Label settings
+            tags$h6(style = "color: #2C5F8D; margin-top: 1rem;", "Dataset Label Settings"),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("binary_show_labels_", col),
+                "Show field labels",
+                value = isolate(input[[paste0("binary_show_labels_", col)]]) %||% TRUE
+              )
+            ),
+            
+            conditionalPanel(
+              condition = sprintf("input['binary_show_labels_%s']", col),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                numericInput(
+                  paste0("binary_label_size_factor_", col),
+                  "Label Size Factor",
+                  value = isolate(input[[paste0("binary_label_size_factor_", col)]]) %||% 1,
+                  min = 0.1,
+                  max = 5,
+                  step = 0.1,
+                  width = "150px"
+                )
+              ),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                numericInput(
+                  paste0("binary_label_rotation_", col),
+                  "Label Rotation (degrees)",
+                  value = isolate(input[[paste0("binary_label_rotation_", col)]]) %||% 0,
+                  min = -180,
+                  max = 180,
+                  step = 1,
+                  width = "150px"
+                )
+              ),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                numericInput(
+                  paste0("binary_label_shift_", col),
+                  "Label Horizontal Shift (pixels)",
+                  value = isolate(input[[paste0("binary_label_shift_", col)]]) %||% 0,
+                  min = -200,
+                  max = 200,
+                  step = 1,
+                  width = "150px"
+                )
+              ),
+              
+              div(
+                style = "margin-bottom: 1rem;",
+                checkboxInput(
+                  paste0("binary_label_align_to_tree_", col),
+                  "Align labels to tree circle (circular mode only)",
+                  value = isolate(input[[paste0("binary_label_align_to_tree_", col)]]) %||% FALSE
+                )
+              )
+            ),
+            
+            tags$hr(),
+            
+            # Additional options
+            tags$h6(style = "color: #2C5F8D; margin-top: 1rem;", "Additional Options"),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("binary_dashed_lines_", col),
+                "Show dashed lines to leaf labels",
+                value = isolate(input[[paste0("binary_dashed_lines_", col)]]) %||% FALSE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("binary_align_to_labels_", col),
+                "Align symbols to end of leaf labels",
+                value = isolate(input[[paste0("binary_align_to_labels_", col)]]) %||% FALSE
+              ),
+              div(class = "help-text",
+                  "Individual dataset fields will not be aligned to each other")
+            )
+          )
         )
       )
     })
@@ -923,6 +1389,27 @@ symbol_outputs <- reactive({
       binary_filled <- input[[paste0("binary_filled_", col)]]
       selected_values <- input[[paste0("binary_values_", col)]]
       
+      # Get advanced settings
+      binary_height_factor <- input[[paste0("binary_height_factor_", col)]] %||% 1
+      binary_symbol_spacing <- input[[paste0("binary_symbol_spacing_", col)]] %||% 10
+      binary_margin <- input[[paste0("binary_margin_", col)]] %||% 0
+      binary_horizontal_grid <- input[[paste0("binary_horizontal_grid_", col)]] %||% FALSE
+      binary_vertical_grid <- input[[paste0("binary_vertical_grid_", col)]] %||% FALSE
+      binary_grid_color <- input[[paste0("binary_grid_color_", col)]] %||% "#0000ff"
+      binary_grid_width <- input[[paste0("binary_grid_width_", col)]] %||% 0.6
+      binary_legend_title <- input[[paste0("binary_legend_title_", col)]] %||% col
+      binary_legend_visible <- input[[paste0("binary_legend_visible_", col)]] %||% TRUE
+      binary_legend_horizontal <- input[[paste0("binary_legend_horizontal_", col)]] %||% FALSE
+      binary_legend_scale <- input[[paste0("binary_legend_scale_", col)]] %||% 1
+      binary_show_labels <- input[[paste0("binary_show_labels_", col)]] %||% TRUE
+      binary_label_size_factor <- input[[paste0("binary_label_size_factor_", col)]] %||% 1
+      binary_label_rotation <- input[[paste0("binary_label_rotation_", col)]] %||% 0
+      binary_label_shift <- input[[paste0("binary_label_shift_", col)]] %||% 0
+      binary_label_align_to_tree <- input[[paste0("binary_label_align_to_tree_", col)]] %||% FALSE
+      binary_show_internal <- input[[paste0("binary_show_internal_", col)]] %||% FALSE
+      binary_dashed_lines <- input[[paste0("binary_dashed_lines_", col)]] %||% FALSE
+      binary_align_to_labels <- input[[paste0("binary_align_to_labels_", col)]] %||% FALSE
+
       if(is.null(binary_mode)) binary_mode <- "all"
       if(is.null(binary_shape)) binary_shape <- 2
       if(is.null(binary_color)) binary_color <- "#3498DB"
@@ -956,20 +1443,50 @@ symbol_outputs <- reactive({
       
       content <- c(content, "")
       
-      # Legend
-      content <- c(content, paste("LEGEND_TITLE", col, sep = "\t"))
+      # Legend (use advanced settings)
+      content <- c(content, paste("LEGEND_TITLE", binary_legend_title, sep = "\t"))
+      content <- c(content, paste("LEGEND_SCALE", binary_legend_scale, sep = "\t"))
+      content <- c(content, paste("LEGEND_VISIBLE", if(binary_legend_visible) "1" else "0", sep = "\t"))
+      if(binary_legend_horizontal) {
+        content <- c(content, paste("LEGEND_HORIZONTAL", "1", sep = "\t"))
+      }
       content <- c(content, paste("LEGEND_SHAPES", paste(field_shapes, collapse = "\t"), sep = "\t"))
       content <- c(content, paste("LEGEND_COLORS", paste(field_colors, collapse = "\t"), sep = "\t"))
       content <- c(content, paste("LEGEND_LABELS", paste(fields, collapse = "\t"), sep = "\t"))
       content <- c(content, "")
-      
-      # Grid settings - disable both
-      content <- c(content, "HORIZONTAL_GRID\t0")
-      content <- c(content, "VERTICAL_GRID\t0")
+
+      # Advanced display settings
+      content <- c(content, paste("HEIGHT_FACTOR", binary_height_factor, sep = "\t"))
+      content <- c(content, paste("SYMBOL_SPACING", binary_symbol_spacing, sep = "\t"))
+      content <- c(content, paste("MARGIN", binary_margin, sep = "\t"))
       content <- c(content, "")
-      
-      content <- c(content, "SHOW_LABELS\t1")
+
+      # Grid settings
+      content <- c(content, paste("HORIZONTAL_GRID", if(binary_horizontal_grid) "1" else "0", sep = "\t"))
+      content <- c(content, paste("VERTICAL_GRID", if(binary_vertical_grid) "1" else "0", sep = "\t"))
+      if(binary_horizontal_grid || binary_vertical_grid) {
+        content <- c(content, paste("GRID_COLOR", binary_grid_color, sep = "\t"))
+        content <- c(content, paste("GRID_WIDTH", binary_grid_width, sep = "\t"))
+      }
       content <- c(content, "")
+
+      # Label settings
+      content <- c(content, paste("SHOW_LABELS", if(binary_show_labels) "1" else "0", sep = "\t"))
+      content <- c(content, paste("SIZE_FACTOR", binary_label_size_factor, sep = "\t"))
+      content <- c(content, paste("LABEL_ROTATION", binary_label_rotation, sep = "\t"))
+      content <- c(content, paste("LABEL_SHIFT", binary_label_shift, sep = "\t"))
+      content <- c(content, paste("LABEL_ALIGN_TO_TREE", if(binary_label_align_to_tree) "1" else "0", sep = "\t"))
+      content <- c(content, "")
+
+      # Additional options (only add if enabled)
+      if(binary_dashed_lines) {
+        content <- c(content, paste("DASHED_LINES", "1", sep = "\t"))
+      }
+      if(binary_align_to_labels) {
+        content <- c(content, paste("ALIGN_TO_LABELS", "1", sep = "\t"))
+      }
+      content <- c(content, "")
+
       content <- c(content, "DATA")
       
       # Data: ID followed by binary values (1, 0, or -1)
