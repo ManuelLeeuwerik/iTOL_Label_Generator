@@ -225,9 +225,161 @@ server <- function(input, output, session) {
     )
   })
 
+  # ---- Tree upload card ----
+  output$tree_upload_card <- renderUI({
+    card(
+      card_header("Tree File (Optional)"),
+      card_body(
+        fileInput(
+          "tree_file",
+          NULL,
+          accept = c(".nwk", ".newick", ".tree", ".tre", ".txt"),
+          buttonLabel = "Browse...",
+          placeholder = "No tree file selected"
+        ),
+        div(class = "help-text",
+            "Upload a Newick tree to validate ID matching and enable advanced features")
+      )
+    )
+  })
+
+  # ---- Tree data reactive ----
+  tree_data <- reactive({
+    req(input$tree_file)
+    tree <- read_newick_tree(input$tree_file$datapath)
+    
+    if(!is.null(tree$error)) {
+      showNotification(
+        tree$error,
+        type = "error",
+        duration = 10
+      )
+      return(NULL)
+    }
+    
+    return(tree)
+  })
+
+  # ---- Tree info display ----
+  output$tree_info_card <- renderUI({
+    req(tree_data())
+    
+    tree <- tree_data()
+    df <- data()
+    
+    # Calculate match statistics if data is loaded
+    match_stats <- NULL
+    if(!is.null(df) && !is.null(input$id_col)) {
+      data_ids <- unique(as.character(df[[input$id_col]]))
+      data_ids <- data_ids[!is.na(data_ids) & data_ids != ""]
+      tree_ids <- tree$tip_labels
+      
+      missing_in_tree <- setdiff(data_ids, tree_ids)
+      missing_in_data <- setdiff(tree_ids, data_ids)
+      match_count <- sum(data_ids %in% tree_ids)
+      match_pct <- if(length(data_ids) > 0) {
+        round(100 * match_count / length(data_ids), 1)
+      } else {
+        0
+      }
+      
+      match_stats <- list(
+        data_ids = data_ids,
+        tree_ids = tree_ids,
+        missing_in_tree = missing_in_tree,
+        missing_in_data = missing_in_data,
+        match_count = match_count,
+        match_pct = match_pct
+      )
+    }
+    
+    card(
+      card_header("Tree Information"),
+      card_body(
+        # Basic tree info
+        div(
+          style = "font-size: 0.9rem;",
+          p(
+            icon("tree"), 
+            tags$strong("Tip labels:"), 
+            tree$n_tips
+          ),
+          if(tree$n_nodes > 0) {
+            p(
+              icon("project-diagram"), 
+              tags$strong("Internal nodes:"), 
+              tree$n_nodes
+            )
+          }
+        ),
+        
+        # Match statistics (if data loaded)
+        if(!is.null(match_stats)) {
+          tagList(
+            
+            # Match percentage display
+            div(
+              class = if(match_stats$match_pct >= 90) "info-box" else "info-box",
+              style = if(match_stats$match_pct >= 90) {
+                "margin: 0.5rem 0;"
+              } else {
+                "margin: 0.5rem 0; background-color: #fff3cd; border-left-color: #ffc107;"
+              },
+              p(
+                style = "font-weight: 600; margin-bottom: 0.25rem;",
+                icon(if(match_stats$match_pct >= 90) "check-circle" else "exclamation-triangle"),
+                sprintf(" ID Match: %s%%", match_stats$match_pct)
+              ),
+              p(
+                style = "margin: 0; font-size: 0.85rem;",
+                sprintf("%d of %d IDs match tree tip labels", 
+                        match_stats$match_count, 
+                        length(match_stats$data_ids))
+              )
+            ),
+            
+            # IDs in data but not in tree
+            if(length(match_stats$missing_in_tree) > 0) {
+              tags$details(
+                tags$summary(
+                  style = "cursor: pointer; color: #E74C3C; font-weight: 600; margin: 0.5rem 0;",
+                  sprintf("⚠ %d ID(s) in data NOT in tree", length(match_stats$missing_in_tree))
+                ),
+                tags$pre(
+                  style = "max-height: 150px; overflow-y: auto; background-color: #fff5f5; padding: 0.5rem; margin-top: 0.5rem; font-size: 0.75rem; border: 1px solid #feb2b2; border-radius: 0.25rem;",
+                  paste(match_stats$missing_in_tree, collapse = "\n")
+                )
+              )
+            },
+            
+            # IDs in tree but not in data
+            if(length(match_stats$missing_in_data) > 0) {
+              tags$details(
+                tags$summary(
+                  style = "cursor: pointer; color: #F39C12; font-weight: 600; margin: 0.5rem 0;",
+                  sprintf("ℹ %d tree tip(s) NOT in data", length(match_stats$missing_in_data))
+                ),
+                tags$pre(
+                  style = "max-height: 150px; overflow-y: auto; background-color: #fffbf0; padding: 0.5rem; margin-top: 0.5rem; font-size: 0.75rem; border: 1px solid #ffd97d; border-radius: 0.25rem;",
+                  paste(match_stats$missing_in_data, collapse = "\n")
+                )
+              )
+            }
+          )
+        } else {
+          div(
+            class = "help-text",
+            style = "margin-top: 0.5rem;",
+            "Load data and select an ID column to see matching statistics"
+          )
+        }
+      )
+    )
+  })
     # ---- Label column selection UI ----
   output$label_column_selection <- renderUI({
     req(data())
+    req(input$data_cols)
     cols <- names(data())
     
     tagList(
@@ -1242,6 +1394,7 @@ symbol_outputs <- reactive({
   
   # ---- Metadata preview ----
   output$metadata_preview_ui <- renderUI({
+    req(input$data_cols)
     req(metadata_output())
     
     card(

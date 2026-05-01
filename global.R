@@ -14,6 +14,7 @@ library(colourpicker)
 library(RColorBrewer)
 library(shinyWidgets)
 library(zip)
+library(ape)
 
 # ---------- Helper Functions ----------
 
@@ -83,4 +84,41 @@ sanitize_colname <- function(x) {
     x <- paste0("col_", x)
   }
   return(x)
+}
+
+# ---- Tree Parsing Functions using ape ----
+
+# Read and parse Newick tree file using ape
+read_newick_tree <- function(file) {
+  tryCatch({
+    # Read tree using ape
+    tree <- read.tree(file)
+    
+    # Ensure node labels exist
+    if(any(duplicated(tree$node.label)) || is.null(tree$node.label)) {
+      tree <- makeNodeLabel(phy = tree, method = "number", prefix = "I")
+    }
+    
+    # Extract information
+    tip_labels <- tree$tip.label
+    node_labels <- tree$node.label
+    
+    # Get tree text for display/debugging
+    tree_text <- paste(readLines(file, warn = FALSE), collapse = "")
+    
+    return(list(
+      tree = tree,
+      tree_text = tree_text,
+      tip_labels = tip_labels,
+      node_labels = if(!is.null(node_labels)) node_labels else character(0),
+      n_tips = length(tip_labels),
+      n_nodes = length(node_labels),
+      error = NULL
+    ))
+  }, error = function(e) {
+    return(list(
+      tree = NULL,
+      error = paste("Error reading tree:", e$message)
+    ))
+  })
 }

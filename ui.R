@@ -56,7 +56,13 @@ ui <- page_sidebar(
     uiOutput("column_selection_card"),
     
     # Dataset label
-    uiOutput("dataset_label_card")
+    uiOutput("dataset_label_card"),
+
+    # Tree file upload (optional)
+    uiOutput("tree_upload_card"),
+
+    # Tree information display  
+    uiOutput("tree_info_card")
   ),
   
       # Main panel with tabs
