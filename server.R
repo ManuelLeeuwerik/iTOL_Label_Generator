@@ -2298,7 +2298,7 @@ symbol_outputs <- reactive({
       content <- c("DATASET_STYLE")
       content <- c(content, "SEPARATOR COMMA")
       content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col, "style"), sep = ","))
-      content <- c(content, paste("COLOR", "#ffff00", sep = ","))
+      content <- c(content, paste("COLOR", "#0000ff", sep = ","))
       content <- c(content, "")
       content <- c(content, "DATA")
       

@@ -86,6 +86,15 @@ Navigate through tabs to create different annotation types:
   - Aligned bars: Values displayed side-by-side for direct comparison
   - Side stacked: Hybrid approach with fields next to each other
 - Configure individual colors for each field
+### `Label Styles`
+- Customize the appearance of tree tip labels based on metadata values
+- **Configuration Options**:
+  - Label Color: Set custom colors for labels
+  - Font Style: Choose between normal, bold, italic, or bold-italic
+  - Background Color: Optional colored background behind labels
+  - Size Factor: Adjust label size relative to the global font size (0.1-5.0)
+- Each unique value in a selected column can have its own style configuration
+- Note: Only affects label styling; does not modify branch or node properties
 ### `Metadata`
 - Export all selected columns in iTOL metadata format
 - Generates a comprehensive metadata file that can be used for tree annotation and data exploration in iTOL
