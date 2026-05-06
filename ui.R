@@ -167,6 +167,25 @@ ui <- page_sidebar(
         )
       ),
       
+      # Label Styles tab
+      nav_panel(
+        "Label Styles",
+        icon = icon("palette"),
+        card_body(
+          div(class = "scrollable-tab-content",
+            div(class = "info-box",
+                p(icon("info-circle"), "Generate DATASET_STYLE annotations. Customize label colors and styles for specific taxa.")
+            ),
+            
+            uiOutput("style_column_settings_ui"),
+            
+            tags$hr(),
+            
+            uiOutput("style_download_card")
+          )
+        )
+      ),
+
       # Metadata tab
       nav_panel(
         "Metadata",
