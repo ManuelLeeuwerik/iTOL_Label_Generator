@@ -3,11 +3,76 @@
 
 server <- function(input, output, session) {
   
+  # ---- Reactive to detect Excel sheets ----
+  excel_sheets_list <- reactive({
+    req(input$file)
+    ext <- tolower(tools::file_ext(input$file$name))
+    
+    if (ext == "xlsx") {
+      sheets <- excel_sheets(input$file$datapath)
+      if (length(sheets) > 1) {
+        return(sheets)
+      }
+    }
+    return(NULL)
+  })
+
+  # ---- Show modal for sheet selection ----
+  observeEvent(excel_sheets_list(), {
+    sheets <- excel_sheets_list()
+    
+    if(!is.null(sheets)) {
+      showModal(
+        modalDialog(
+          title = "Select Excel Sheet",
+          size = "m",
+          easyClose = FALSE,
+          
+          div(
+            class = "info-box",
+            p(icon("info-circle"), 
+              "This Excel file contains multiple sheets. Please select which sheet to import.")
+          ),
+          
+          selectInput(
+            "excel_sheet",
+            "Choose a sheet:",
+            choices = sheets,
+            selected = sheets[1]
+          ),
+          
+          footer = tagList(
+            actionButton("confirm_sheet", "Load Sheet", class = "btn-success")
+          )
+        )
+      )
+    }
+  })
+
+  # ---- Close modal when sheet is confirmed ----
+  observeEvent(input$confirm_sheet, {
+    removeModal()
+    # Trigger data reload
+    updateNumericInput(session, "trigger_reload", value = runif(1))
+  })
+  
+  # Hidden trigger for reload (add to UI later)
+  # This is handled internally, no UI change needed
+  
   # ---- Data reactive with sheet selection ----
   data <- reactive({
     req(input$file)
-    file <- input$file$datapath
+    
+    # For multi-sheet Excel files, wait for sheet selection
     ext <- tolower(tools::file_ext(input$file$name))
+    if (ext == "xlsx") {
+      sheets <- excel_sheets(input$file$datapath)
+      if (length(sheets) > 1) {
+        req(input$excel_sheet, input$confirm_sheet)
+      }
+    }
+    
+    file <- input$file$datapath
     
     tryCatch({
       
@@ -81,65 +146,15 @@ server <- function(input, output, session) {
       return(NULL)
     })
   })
-  
-  
-  # ---- Reactive to detect Excel sheets ----
-  excel_sheets_list <- reactive({
-    req(input$file)
-    ext <- tolower(tools::file_ext(input$file$name))
-    
-    if (ext == "xlsx") {
-      sheets <- excel_sheets(input$file$datapath)
-      if (length(sheets) > 1) {
-        return(sheets)
-      }
-    }
-    return(NULL)
-  })
 
-  # ---- Show modal for sheet selection ----
-  observeEvent(excel_sheets_list(), {
-    sheets <- excel_sheets_list()
-    
-    if(!is.null(sheets)) {
-      showModal(
-        modalDialog(
-          title = "Select Excel Sheet",
-          size = "m",
-          easyClose = FALSE,
-          
-          div(
-            class = "info-box",
-            p(icon("info-circle"), 
-              "This Excel file contains multiple sheets. Please select which sheet to import.")
-          ),
-          
-          selectInput(
-            "excel_sheet",
-            "Choose a sheet:",
-            choices = sheets,
-            selected = sheets[1]
-          ),
-          
-          footer = tagList(
-            actionButton("confirm_sheet", "Load Sheet", class = "btn-success")
-          )
-        )
-      )
-    }
-  })
-
-  # ---- Close modal when sheet is confirmed ----
-  observeEvent(input$confirm_sheet, {
-    removeModal()
-  })
-  
-  # ---- Data preview table ----
+  # ---- Data table output ----
   output$table <- renderDT({
     req(data())
+    
     datatable(
       data(),
       options = list(
+        pageLength = 25,
         scrollX = TRUE,
         pageLength = 10,
         dom = 'Bfrtip',
@@ -149,7 +164,7 @@ server <- function(input, output, session) {
       rownames = FALSE
     )
   })
-  
+
   # ---- Column selection card ----
   output$column_selection_card <- renderUI({
     req(data())
@@ -238,7 +253,7 @@ server <- function(input, output, session) {
           placeholder = "No tree file selected"
         ),
         div(class = "help-text",
-            "Upload a Newick tree to validate ID matching and enable advanced features")
+            "Upload a Newick tree to validate ID matching")
       )
     )
   })
