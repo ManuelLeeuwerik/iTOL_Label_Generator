@@ -44,6 +44,7 @@ Click `Browse` to upload a file:
   - If the file has multiple sheets, a dialog will appear to select which sheet to import
 
 ![workflow_step1](README_figures/workflow_step1.png)
+*Figure 1: File upload interface with Excel sheet selection dialog*
 
 ## 2. Configure Columns
 - **ID Column:** Select the column that contains unique identifiers matching your phylogenetic tree tip labels
@@ -51,6 +52,7 @@ Click `Browse` to upload a file:
 - **Dataset Label:** Enter a descriptive name for your annotation set (used in filenames and iTOL legends)
 
 ![workflow_step2](README_figures/workflow_step2.png)
+*Figure 2: Column selection for ID and metadata fields*
 
 - **Validate Tree Matching (optional):** To ensure your annotations will work correctly in iTOL, you can upload your phylogenetic tree file (.nwk, .newick, .tree, .tre) in the sidebar. The app will:
   - Display the number of tip labels and internal nodes in your tree
@@ -60,6 +62,7 @@ Click `Browse` to upload a file:
     - Tree tips NOT in data: Tree labels that won't receive annotations
 
 ![workflow_step2_tree](README_figures/workflow_step2_tree.png)
+*Figure 3: Tree validation showing correct match (left) vs (right)*
 
 ## 3. Generate Annotations
 Navigate through tabs to create different annotation types:
@@ -68,6 +71,7 @@ Navigate through tabs to create different annotation types:
 - Verify uploaded data structure before generating annotations
 
 ![workflow_datapreview](README_figures/workflow_datapreview.png)
+*Figure 4: Uploaded metadata preview table*
 
 ### `Symbol Annotations`
 - Display categorical or numeric data as colored symbols next to tree tips
@@ -82,6 +86,7 @@ Navigate through tabs to create different annotation types:
 - View ColorBrewer palette reference within the tab for guidance
 
 ![workflow_symbol_annotation](README_figures/workflow_symbol_annotation_results.png)
+*Figure 5: Symbol configuration with manual colors (left) and iTOL output (right)*
 
 ### `Binary Set`
 - Show presence/absence patterns for categorical data
@@ -92,7 +97,8 @@ Navigate through tabs to create different annotation types:
 - All values as separate fields: Create individual binary fields for each unique value
 - Ideal for displaying trait presence, gene presence/absence, or classification membership
 
-![workflow_symbol_annotation](README_figures/workflow_binary_results.png)
+![workflow_binary](README_figures/workflow_binary_results.png)
+*Figure 6: Binary set configuration (left) and iTOL output (right)*
 
 ### `Simple Bar Chart`
 - Display single numeric values as horizontal bars outside the tree
@@ -101,6 +107,10 @@ Navigate through tabs to create different annotation types:
   - Choose label position (outside, left, center, right)
   - Enable automatic label color contrast or set manual colors
 - Useful for showing single measurements like genome size, abundance, or scores
+
+![workflow_simple_bar](README_figures/workflow_simple_bar_results.png)
+*Figure 7: Simple bar configuration (left) and iTOL output (right)*
+
 ### `Multi-Value Bar Chart`
 - Display multiple numeric columns simultaneously
 - **Display Modes**:
@@ -108,6 +118,10 @@ Navigate through tabs to create different annotation types:
   - Aligned bars: Values displayed side-by-side for direct comparison
   - Side stacked: Hybrid approach with fields next to each other
 - Configure individual colors for each field
+
+![workflow_multi_bar](README_figures/workflow_multi_bar_results.png)
+*Figure 8: Multi-value bar configuration with side stacked layout (left) and iTOL output (right)*
+
 ### `Label Styles`
 - Customize the appearance of tree tip labels based on metadata values
 - **Configuration Options**:
@@ -117,10 +131,18 @@ Navigate through tabs to create different annotation types:
   - Size Factor: Adjust label size relative to the global font size (0.1-5.0)
 - Each unique value in a selected column can have its own style configuration
 - Note: Only affects label styling; does not modify branch or node properties
+
+![workflow_label_styles](README_figures/workflow_label_styles_results.png)
+*Figure 9: Label style settings (left) and iTOL output (right)*
+
 ### `Metadata`
 - Export all selected columns in iTOL metadata format
 - Generates a comprehensive metadata file that can be used for tree annotation and data exploration in iTOL
 - All selected columns are included as-is without filtering
+
+![workflow_metadata](README_figures/workflow_metadata.png)
+*Figure 10: Node hover without metadata (left) and with metadata (right)*
+
 ### `Change Labels`
 - Replace tree tip labels with alternative values from your data
 - Configuration:

@@ -2203,7 +2203,7 @@ symbol_outputs <- reactive({
           
           if(is.null(current_color)) current_color <- "#0000ff"
           if(is.null(current_style)) current_style <- "normal"
-          if(is.null(current_bg)) current_bg <- ""
+          if(is.null(current_bg)) current_bg <- "#FFFFFF00"
           if(is.null(current_size)) current_size <- 1
           
           div(
@@ -2235,7 +2235,7 @@ symbol_outputs <- reactive({
                     "Bold Italic" = "bold-italic"
                   ),
                   selected = current_style,
-                  width = "100%"
+                  width = "200px"
                 )
               )
             ),
@@ -2264,13 +2264,74 @@ symbol_outputs <- reactive({
                   min = 0.1,
                   max = 5,
                   step = 0.1,
-                  width = "100%"
+                  width = "200px"
                 ),
                 div(class = "help-text", "Relative to global font size")
               )
             )
           )
-        })
+        }),
+        
+        tags$hr(),
+        
+        # ---- COLLAPSIBLE ADVANCED SETTINGS SECTION ----
+        tags$details(
+          tags$summary(
+            style = "cursor: pointer; font-weight: 600; color: #2C5F8D; margin: 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;",
+            icon("cog"),
+            "Advanced iTOL Settings"
+          ),
+          
+          div(
+            style = "padding: 1rem; background-color: #f8f9fa; border-radius: 0.25rem; margin-top: 0.5rem; border: 1px solid #dee2e6;",
+            
+            # Legend settings
+            tags$h6(style = "color: #2C5F8D;", "Legend Settings"),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              textInput(
+                paste0("style_legend_title_", col),
+                "Legend Title",
+                value = isolate(input[[paste0("style_legend_title_", col)]]) %||% col,
+                width = "250px"
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("style_legend_visible_", col),
+                "Show legend initially",
+                value = isolate(input[[paste0("style_legend_visible_", col)]]) %||% TRUE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              checkboxInput(
+                paste0("style_legend_horizontal_", col),
+                "Horizontal legend layout",
+                value = isolate(input[[paste0("style_legend_horizontal_", col)]]) %||% FALSE
+              )
+            ),
+            
+            div(
+              style = "margin-bottom: 1rem;",
+              numericInput(
+                paste0("style_legend_scale_", col),
+                "Legend Scale Factor",
+                value = isolate(input[[paste0("style_legend_scale_", col)]]) %||% 1,
+                min = 0.1,
+                max = 5,
+                step = 0.1,
+                width = "150px"
+              ),
+              div(class = "help-text",
+                  "Scale factor for legend symbols")
+            )
+          )
+        )
       )
     })
     
@@ -2300,6 +2361,31 @@ symbol_outputs <- reactive({
       content <- c(content, paste("DATASET_LABEL", paste(input$dataset_label, "-", col, "style"), sep = ","))
       content <- c(content, paste("COLOR", "#0000ff", sep = ","))
       content <- c(content, "")
+      
+      # Get legend colors
+      legend_colors <- sapply(col_values, function(val) {
+        val_id <- safe_id(paste(col, val, sep = "_"))
+        input[[paste0("style_color_", val_id)]] %||% "#0000ff"
+      })
+      
+      # Get advanced legend settings
+      style_legend_title <- input[[paste0("style_legend_title_", col)]] %||% col
+      style_legend_visible <- input[[paste0("style_legend_visible_", col)]] %||% TRUE
+      style_legend_horizontal <- input[[paste0("style_legend_horizontal_", col)]] %||% FALSE
+      style_legend_scale <- input[[paste0("style_legend_scale_", col)]] %||% 1
+      
+      # Add legend
+      content <- c(content, paste("LEGEND_TITLE", style_legend_title, sep = ","))
+      content <- c(content, paste("LEGEND_SCALE", style_legend_scale, sep = ","))
+      content <- c(content, paste("LEGEND_VISIBLE", if(style_legend_visible) "1" else "0", sep = ","))
+      if(style_legend_horizontal) {
+        content <- c(content, paste("LEGEND_HORIZONTAL", "1", sep = ","))
+      }
+      content <- c(content, paste("LEGEND_SHAPES", paste(rep("1", length(col_values)), collapse = ","), sep = ","))
+      content <- c(content, paste("LEGEND_COLORS", paste(legend_colors, collapse = ","), sep = ","))
+      content <- c(content, paste("LEGEND_LABELS", paste(col_values, collapse = ","), sep = ","))
+      content <- c(content, "")
+      
       content <- c(content, "DATA")
       
       # For each row, check if value matches and apply styling
@@ -2312,7 +2398,7 @@ symbol_outputs <- reactive({
           
           color <- input[[paste0("style_color_", val_id)]] %||% "#0000ff"
           font_style <- input[[paste0("style_font_", val_id)]] %||% "normal"
-          bg_color <- input[[paste0("style_bg_", val_id)]] %||% ""
+          bg_color <- input[[paste0("style_bg_", val_id)]] %||% "#FFFFFF00"
           size_factor <- input[[paste0("style_size_", val_id)]] %||% 1
           
           # Format: ID,TYPE,WHAT,COLOR,WIDTH_OR_SIZE_FACTOR,STYLE,BACKGROUND_COLOR
