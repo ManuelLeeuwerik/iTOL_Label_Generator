@@ -48,11 +48,11 @@ Click `Browse` to upload a file:
 - **Columns to Visualize:** Choose one or more metadata columns to generate annotations from
 - **Dataset Label:** Enter a descriptive name for your annotation set (used in filenames and iTOL legends)
 - **Validate Tree Matching (optional):** To ensure your annotations will work correctly in iTOL, you can upload your phylogenetic tree file (.nwk, .newick, .tree, .tre) in the sidebar. The app will:
-- Display the number of tip labels and internal nodes in your tree
-- Compare your selected ID column against the tree tip labels
-- Show match percentage and identify mismatches:
-  - IDs in data NOT in tree: Values that won't appear in your iTOL visualization
-  - Tree tips NOT in data: Tree labels that won't receive annotations
+  - Display the number of tip labels and internal nodes in your tree
+  - Compare your selected ID column against the tree tip labels
+  - Show match percentage and identify mismatches:
+    - IDs in data NOT in tree: Values that won't appear in your iTOL visualization
+    - Tree tips NOT in data: Tree labels that won't receive annotations
 
 ## 3. Generate Annotations
 Navigate through tabs to create different annotation types:
