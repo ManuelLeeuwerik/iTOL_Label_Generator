@@ -43,10 +43,15 @@ Click `Browse` to upload a file:
 - XLSX (Excel file)
   - If the file has multiple sheets, a dialog will appear to select which sheet to import
 
+![workflow_step1](README_figures/workflow_step1.png)
+
 ## 2. Configure Columns
 - **ID Column:** Select the column that contains unique identifiers matching your phylogenetic tree tip labels
 - **Columns to Visualize:** Choose one or more metadata columns to generate annotations from
 - **Dataset Label:** Enter a descriptive name for your annotation set (used in filenames and iTOL legends)
+
+![workflow_step2](README_figures/workflow_step2.png)
+
 - **Validate Tree Matching (optional):** To ensure your annotations will work correctly in iTOL, you can upload your phylogenetic tree file (.nwk, .newick, .tree, .tre) in the sidebar. The app will:
   - Display the number of tip labels and internal nodes in your tree
   - Compare your selected ID column against the tree tip labels
@@ -54,11 +59,16 @@ Click `Browse` to upload a file:
     - IDs in data NOT in tree: Values that won't appear in your iTOL visualization
     - Tree tips NOT in data: Tree labels that won't receive annotations
 
+![workflow_step2_tree](README_figures/workflow_step2_tree.png)
+
 ## 3. Generate Annotations
 Navigate through tabs to create different annotation types:
 
 ### `Data Preview`
 - Verify uploaded data structure before generating annotations
+
+![workflow_datapreview](README_figures/workflow_datapreview.png)
+
 ### `Symbol Annotations`
 - Display categorical or numeric data as colored symbols next to tree tips
 - **Color Options**:
@@ -70,6 +80,9 @@ Navigate through tabs to create different annotation types:
   - Manual mode: Assign different shapes (square, circle, star, triangle, checkmark) to each value
 - Fill Options: Toggle between filled symbols or outline-only shapes
 - View ColorBrewer palette reference within the tab for guidance
+
+![workflow_symbol_annotation](README_figures/workflow_symbol_annotation_results.png)
+
 ### `Binary Set`
 - Show presence/absence patterns for categorical data
 - Configure symbol shape, color, and fill behavior
@@ -78,6 +91,9 @@ Navigate through tabs to create different annotation types:
   - Exclude specific values: Show presence for all except selected values
 - All values as separate fields: Create individual binary fields for each unique value
 - Ideal for displaying trait presence, gene presence/absence, or classification membership
+
+![workflow_symbol_annotation](README_figures/workflow_binary_results.png)
+
 ### `Simple Bar Chart`
 - Display single numeric values as horizontal bars outside the tree
 - Customize bar color, scale lines, and value labels
