@@ -126,15 +126,20 @@ server <- function(input, output, session) {
       }
       
       # ---------------- SANITIZATION ----------------
-      
+      # Store original column names before sanitization
+      original_colnames <- names(df)
+
       # Sanitize column names
       names(df) <- sapply(names(df), sanitize_colname)
-      
+
       # Ensure uniqueness after sanitization
       if (any(duplicated(names(df)))) {
         names(df) <- make.unique(names(df), sep = "_")
       }
-      
+
+      # Store mapping as an attribute
+      attr(df, "original_colnames") <- setNames(original_colnames, names(df))
+
       return(df)
       
     }, error = function(e) {
@@ -3486,6 +3491,7 @@ multibar_output <- reactive({
     df <- isolate(data())
     cols <- names(df)
     
+    tree_obj <- tryCatch(tree_data(), error = function(e) NULL)
     # Get current settings
     current_id_col <- isolate(input$heatmap_id_col)
     current_value_cols <- isolate(input$heatmap_value_cols)
@@ -3538,6 +3544,43 @@ multibar_output <- reactive({
               "Label for this heatmap dataset")
         )
       ),
+
+      # Add this new card after the Dataset Label card
+      card(
+        card_header("Tree Options"),
+        card_body(
+          # Show tree status
+          if(!is.null(tree_obj) && !is.null(tree_obj$tree)) {
+            tagList(
+              div(
+                class = "info-box",
+                style = "background-color: #d4edda; border-left-color: #28a745; margin-bottom: 1rem;",
+                p(
+                  icon("check-circle"),
+                  tags$strong(" Tree loaded")
+                )
+              ),
+              checkboxInput(
+                "heatmap_add_tree",
+                "Add FIELD_TREE to heatmap (creates a tree above the heatmap fields)",
+                value = isolate(input$heatmap_add_tree) %||%
+                  (!is.null(tree_obj) && !is.null(tree_obj$tree))
+              ),
+              div(class = "help-text",
+                  "When enabled, the tree will be displayed above the heatmap fields in iTOL. The fields will be ordered based on the tree structure.")
+            )
+          } else {
+            div(
+              class = "info-box",
+              style = "background-color: #fff3cd; border-left-color: #ffc107;",
+              p(
+                icon("info-circle"),
+                " No tree uploaded. Upload a tree in the sidebar to enable tree-based ordering."
+              )
+            )
+          }
+        )
+      ),
       
       card(
         card_header("Color Settings"),
@@ -3571,7 +3614,7 @@ multibar_output <- reactive({
               width = "200px"
             ),
             div(class = "help-text",
-                "Sequential palettes work well for values from low to high. Diverging palettes work well when you have a meaningful midpoint."),
+                "Choose a ColorBrewer palette for the heatmap."),
             
             checkboxInput(
               "heatmap_reverse_palette",
@@ -3706,7 +3749,7 @@ multibar_output <- reactive({
                   colourInput(
                     "heatmap_border_color",
                     "Border Color",
-                    value = isolate(input$heatmap_border_color) %||% "#0099FF",
+                    value = isolate(input$heatmap_border_color) %||% "#000000",
                     showColour = "both",
                     palette = "square",
                     returnName = FALSE
@@ -3792,10 +3835,14 @@ multibar_output <- reactive({
     df <- data()
     id_col <- input$heatmap_id_col
     value_cols <- input$heatmap_value_cols
-    
+
+    # Get tree object safely (optional)
+    tree_obj <- tryCatch(tree_data(), error = function(e) NULL)
+
     # Get settings
     heatmap_dataset_label <- input$heatmap_dataset_label %||% "heatmap"
     heatmap_color_mode <- input$heatmap_color_mode %||% "ColorBrewer"
+    heatmap_add_tree <- input$heatmap_add_tree %||% FALSE
 
     # Determine colors based on mode
     if(heatmap_color_mode == "ColorBrewer") {
@@ -3812,7 +3859,7 @@ multibar_output <- reactive({
       heatmap_color_min <- pal_colors[1]
       heatmap_color_mid <- pal_colors[2]
       heatmap_color_max <- pal_colors[3]
-      heatmap_use_mid_color <- TRUE  # Always use 3-color gradient for ColorBrewer
+      heatmap_use_mid_color <- TRUE
     } else {
       # Manual mode
       heatmap_color_min <- input$heatmap_color_min %||% "#0099FF"
@@ -3825,7 +3872,7 @@ multibar_output <- reactive({
     heatmap_strip_width <- input$heatmap_strip_width %||% 30
     heatmap_auto_legend <- input$heatmap_auto_legend %||% TRUE
     heatmap_border_width <- input$heatmap_border_width %||% 0
-    heatmap_border_color <- input$heatmap_border_color %||% "#0000ff"
+    heatmap_border_color <- input$heatmap_border_color %||% "#000000"
     heatmap_label_size_factor <- input$heatmap_label_size_factor %||% 1
     heatmap_label_rotation <- input$heatmap_label_rotation %||% 0
     heatmap_label_shift <- input$heatmap_label_shift %||% 0
@@ -3838,9 +3885,27 @@ multibar_output <- reactive({
     content <- c(content, paste("COLOR", heatmap_color_max, sep = "\t"))
     content <- c(content, "")
     
-    # Field labels
-    content <- c(content, paste("FIELD_LABELS", paste(value_cols, collapse = "\t"), sep = "\t"))
+    # Get original column names
+    original_name_map <- attr(df, "original_colnames")
+    if(!is.null(original_name_map)) {
+      original_cols <- original_name_map[value_cols]
+    } else {
+      original_cols <- value_cols  # Fallback to sanitized names
+    }
+
+    # Field labels using original sample names
+    content <- c(content, paste("FIELD_LABELS", paste(original_cols, collapse = "\t"), sep = "\t"))
     content <- c(content, "")
+    
+    # Add FIELD_TREE if tree is loaded and user wants it
+    if(!is.null(tree_obj) && !is.null(tree_obj$tree) && heatmap_add_tree) {
+      # Use the actual Newick tree text from the uploaded file
+      # Remove any whitespace/newlines
+      field_tree <- gsub("[\\n\\r\\s]", "", tree_obj$tree_text)
+      content <- c(content, paste("FIELD_TREE", field_tree, sep = "\t"))
+      content <- c(content, "SHOW_TREE\t1")
+      content <- c(content, "")
+    }
     
     # Color settings
     content <- c(content, paste("COLOR_MAX", heatmap_color_max, sep = "\t"))
@@ -3865,10 +3930,10 @@ multibar_output <- reactive({
     }
     
     # Label settings
-      content <- c(content, paste("SIZE_FACTOR", heatmap_label_size_factor, sep = "\t"))
-      content <- c(content, paste("LABEL_ROTATION", heatmap_label_rotation, sep = "\t"))
-      content <- c(content, paste("LABEL_SHIFT", heatmap_label_shift, sep = "\t"))
-      content <- c(content, "")
+    content <- c(content, paste("SIZE_FACTOR", heatmap_label_size_factor, sep = "\t"))
+    content <- c(content, paste("LABEL_ROTATION", heatmap_label_rotation, sep = "\t"))
+    content <- c(content, paste("LABEL_SHIFT", heatmap_label_shift, sep = "\t"))
+    content <- c(content, "")
     
     # Margin
     if(heatmap_margin != 0) {
