@@ -4,13 +4,13 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - r::r-shiny
-  - r::r-readr
-  - r::r-readxl
-  - r::r-dt
-  - r::r-rsconnect
-  - r::r-tidyverse
-  - r::r-scales
+  - r-shiny==1.13.0
+  - r-readr==2.2.0
+  - r-readxl==1.4.5
+  - r-dt==0.34.0
+  - r-rsconnect==1.8.0
+  - r-tidyverse==2.0.0
+  - r-scales==1.4.0
   - conda-forge::r-colourpicker
   - conda-forge::zip
   - conda-forge::r-r.utils
@@ -18,3 +18,4 @@ dependencies:
   - ca-certificates
   - openssl
   - r-zip
+  - conda-forge::r-ape
