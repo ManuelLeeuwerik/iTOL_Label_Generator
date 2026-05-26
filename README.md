@@ -179,7 +179,7 @@ Navigate through tabs to create different annotation types:
 - Note: Only affects label styling; does not modify branch or node properties
 
 ![workflow_label_styles](README_figures/workflow_label_styles_results.png)  
-*Figure 10: Label style settings (left) and iTOL output (right)*
+*Figure 11: Label style settings (left) and iTOL output (right)*
 
 ### `Metadata`
 - Export all selected columns in iTOL metadata format
@@ -187,7 +187,7 @@ Navigate through tabs to create different annotation types:
 - All selected columns are included as-is without filtering
 
 ![workflow_metadata](README_figures/workflow_metadata.png)  
-*Figure 11: Node hover without metadata (left) and with metadata (right)*
+*Figure 12: Node hover without metadata (left) and with metadata (right)*
 
 ### `Change Labels`
 - Replace tree tip labels with alternative values from your data
